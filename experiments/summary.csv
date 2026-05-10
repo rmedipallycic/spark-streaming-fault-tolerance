@@ -1,0 +1,25 @@
+experiment_id,strategy,strategy_name,checkpoint_type,scenario,run_date,data_volume_records,normal_throughput_rps,failure_throughput_rps,throughput_degradation_pct,recovery_latency_sec,duplicates_detected,data_loss_detected,checkpoint_size_mb,notes
+EXP-001,A,High-Frequency Checkpointing,local,baseline,2025-09-01,1000000,4820,4820,0.00,0.000,0,0,124.3,Baseline run no failure injected
+EXP-002,A,High-Frequency Checkpointing,local,node_failure,2025-09-03,1000000,4820,3701,23.21,18.420,0,0,124.3,Single executor killed mid-batch recovered cleanly
+EXP-003,A,High-Frequency Checkpointing,local,driver_failure,2025-09-05,1000000,4820,3544,26.47,31.870,0,0,124.3,Driver killed during checkpoint write longer recovery
+EXP-004,A,High-Frequency Checkpointing,local,checkpoint_corruption,2025-09-07,1000000,4820,0,100.00,NULL,NULL,NULL,124.3,Pipeline failed to restart corruption not detected
+EXP-005,A,High-Frequency Checkpointing,s3,baseline,2025-09-10,1000000,4210,4210,0.00,0.000,0,0,124.3,S3 checkpoint baseline lower throughput vs local
+EXP-006,A,High-Frequency Checkpointing,s3,network_partition,2025-09-12,1000000,4210,1820,56.77,87.340,14,0,124.3,S3 eventual consistency caused delayed recovery and 14 duplicates
+EXP-007,B,Interval-Based Checkpointing,local,baseline,2025-09-15,1000000,5940,5940,0.00,0.000,0,0,98.7,Higher throughput than Strategy A under normal conditions
+EXP-008,B,Interval-Based Checkpointing,local,node_failure,2025-09-17,1000000,5940,4812,18.99,24.110,3,0,98.7,3 duplicate records detected after executor recovery
+EXP-009,B,Interval-Based Checkpointing,local,driver_failure,2025-09-19,1000000,5940,4103,30.93,42.560,0,0,98.7,Longer recovery than Strategy A due to larger checkpoint interval
+EXP-010,B,Interval-Based Checkpointing,local,checkpoint_corruption,2025-09-21,1000000,5940,4650,21.72,19.880,47,0,98.7,Silent duplicates produced in 3 of 10 corruption trials avg 47 duplicates
+EXP-011,B,Interval-Based Checkpointing,s3,baseline,2025-09-24,1000000,5540,5540,0.00,0.000,0,0,98.7,S3 checkpoint slightly reduces throughput
+EXP-012,B,Interval-Based Checkpointing,s3,network_partition,2025-09-26,1000000,5540,2210,60.11,112.450,28,0,98.7,Worst recovery observed S3 eventual consistency amplifies duplicate risk
+EXP-013,C,Async WAL Checkpointing,local,baseline,2025-09-29,1000000,5210,5210,0.00,0.000,0,0,187.4,WAL increases checkpoint size but improves recovery consistency
+EXP-014,C,Async WAL Checkpointing,local,node_failure,2025-10-01,1000000,5210,4680,10.17,12.340,0,0,187.4,Best recovery throughput retention across all node failure scenarios
+EXP-015,C,Async WAL Checkpointing,local,driver_failure,2025-10-03,1000000,5210,4430,14.97,22.780,0,0,187.4,WAL enables cleaner driver recovery zero duplicates
+EXP-016,C,Async WAL Checkpointing,local,checkpoint_corruption,2025-10-05,1000000,5210,4890,6.14,8.920,0,0,187.4,WAL detects corruption and recovers from last clean state
+EXP-017,C,Async WAL Checkpointing,s3,baseline,2025-10-08,1000000,4780,4780,0.00,0.000,0,0,187.4,S3 WAL baseline acceptable throughput
+EXP-018,C,Async WAL Checkpointing,s3,network_partition,2025-10-10,1000000,4780,3210,32.85,54.230,0,0,187.4,WAL significantly reduces duplicate risk under network partition vs Strategy B
+EXP-019,A,High-Frequency Checkpointing,local,baseline,2025-10-13,5000000,4790,4790,0.00,0.000,0,0,621.4,5M record run throughput consistent with 1M baseline
+EXP-020,B,Interval-Based Checkpointing,local,baseline,2025-10-13,5000000,5910,5910,0.00,0.000,0,0,493.2,5M record run confirms Strategy B throughput advantage under normal ops
+EXP-021,C,Async WAL Checkpointing,local,baseline,2025-10-13,5000000,5180,5180,0.00,0.000,0,0,937.1,5M record run WAL checkpoint size grows significantly at scale
+EXP-022,A,High-Frequency Checkpointing,hdfs,node_failure,2025-10-17,1000000,4650,3820,17.85,16.780,0,0,124.3,HDFS checkpoint faster recovery than S3 no eventual consistency issues
+EXP-023,B,Interval-Based Checkpointing,hdfs,checkpoint_corruption,2025-10-19,1000000,5870,5210,11.24,14.560,8,0,98.7,HDFS reduces duplicate count vs S3 but still produces silent duplicates
+EXP-024,C,Async WAL Checkpointing,hdfs,network_partition,2025-10-21,1000000,5140,4120,19.84,28.340,0,0,187.4,HDFS WAL best overall recovery profile across all storage backends
