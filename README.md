@@ -151,7 +151,7 @@ Related academic work this project builds on:
 
 **Rajshekar Medipally**  
 medipallyr2@gmail.com  
-Raleigh, NC | PhD Applicant — Computer Science  
+Richmond, VA | PhD Applicant — Computer Science  
 [github.com/rmedipallycic](https://github.com/rmedipallycic)
 
 ---
