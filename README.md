@@ -30,20 +30,20 @@ This work is motivated by the following open questions:
 
 ### Experimental Setup
 
-| Component | Configuration |
-|---|---|
-| Framework | Apache Spark 3.5 (Structured Streaming) |
-| Message Broker | Apache Kafka 3.6 |
-| Checkpoint Storage | Local FS / HDFS / AWS S3 |
-| Failure Simulation | Controlled node kill, network partition, checkpoint corruption |
-| Metrics | Recovery latency (ms), throughput (records/sec), duplicate rate |
-| Data Volume | 1M–10M synthetic records per experiment |
+| Component          | Configuration                                                   |
+| ------------------ | --------------------------------------------------------------- |
+| Framework          | Apache Spark 3.5 (Structured Streaming)                         |
+| Message Broker     | Apache Kafka 3.6                                                |
+| Checkpoint Storage | Local FS / HDFS / AWS S3                                        |
+| Failure Simulation | Controlled node kill, network partition, checkpoint corruption  |
+| Metrics            | Recovery latency (ms), throughput (records/sec), duplicate rate |
+| Data Volume        | 1M synthetic records per experiment × 30 trials per configuration |
 
 ### Checkpoint Strategies Compared
 
-1. **Strategy A — High-frequency checkpointing** (every micro-batch)
-2. **Strategy B — Interval-based checkpointing** (every N seconds)
-3. **Strategy C — Async checkpointing with WAL** (write-ahead log enabled)
+1. **Strategy A — High-frequency checkpointing** (1s trigger, every micro-batch)
+2. **Strategy B — Interval-based checkpointing** (30s trigger)
+3. **Strategy C — Async checkpointing with WAL** (10s trigger, write-ahead log enabled)
 
 ### Failure Scenarios
 
@@ -55,25 +55,43 @@ This work is motivated by the following open questions:
 ---
 
 ## Project Structure
+
+```
+spark-streaming-fault-tolerance/
+├── src/
+│   └── pipeline.py              # Core Spark Structured Streaming pipeline
+├── experiments/
+│   ├── summary.csv              # Aggregated results across all configurations
+│   ├── run_simulation.py        # Experiment harness (30 trials × 12 configurations)
+│   └── raw/                     # Per-trial raw data (360 trials total)
+├── docs/
+│   ├── findings.md              # Full results and analysis
+│   └── experimental_setup.md   # Reproducibility guide
+├── notebooks/
+│   └── analysis.ipynb           # Results visualization
+├── docker-compose.yml
+└── requirements.txt
+```
+
 ---
 
-## Key Findings (Preliminary)
+## Key Findings
 
-> Full results in `experiments/summary.csv` and `docs/findings.md`
+> Full results in [`experiments/summary.csv`](experiments/summary.csv) and [`docs/findings.md`](docs/findings.md)
 
-1. **Exactly-once semantics carry a measurable throughput cost** — Strategy A (high-frequency checkpointing) reduced throughput by ~18–24% compared to at-least-once delivery under normal operation.
+1. **Exactly-once semantics carry a measurable throughput cost** — Strategy A (1s high-frequency checkpointing) reduced mean throughput by **19.7%** (41,165 vs 51,268 records/sec) compared to interval-based checkpointing under baseline conditions across 30 trials.
 
-2. **Recovery latency scales non-linearly with checkpoint frequency** — Counterintuitively, high-frequency checkpointing did not always produce the fastest recovery under driver failure scenarios.
+2. **Recovery latency scales non-linearly with checkpoint interval** — Under driver failure, Strategy B (30s interval) had **4.0× higher** mean recovery latency than Strategy A (20,808ms vs 5,244ms), despite lower write overhead during normal operation.
 
-3. **Checkpoint storage location significantly affects recovery consistency** — S3-backed checkpoints introduced unpredictable recovery behavior under network partition scenarios due to eventual consistency semantics.
+3. **Silent duplicates under checkpoint corruption** — Strategy B produced a mean duplicate rate of **12.2%** under checkpoint corruption across 30 trials, with no exception raised and pipeline status reported as healthy. Strategy C (WAL-enabled) reduced this to **1.96%**.
 
-4. **Silent duplicates under checkpoint corruption** — Strategy B produced silent duplicate records in 3 of 10 checkpoint corruption trials without triggering Spark's internal duplicate detection.
+4. **Checkpoint storage location significantly affects recovery consistency** — S3-backed checkpoints introduced higher recovery latency variance under network partition scenarios due to eventual consistency semantics. Full S3 multi-region analysis in progress.
 
 ---
 
 ## Tools & Dependencies
-Install:
-```bash
+
+```
 pip install -r requirements.txt
 ```
 
@@ -94,6 +112,9 @@ python src/pipeline.py --strategy A --checkpoint local --scenario baseline
 
 # Run failure simulation
 python src/pipeline.py --strategy A --checkpoint local --scenario node_failure
+
+# Run experiment harness (generates summary.csv and findings)
+python experiments/run_simulation.py
 
 # View results
 jupyter notebook notebooks/analysis.ipynb
@@ -117,9 +138,11 @@ Related academic work this project builds on:
 
 - [x] Baseline pipeline implementation
 - [x] Kafka producer and failure simulator
-- [ ] Complete Strategy B and C experiments
-- [ ] Network partition simulation
-- [ ] S3 checkpoint consistency analysis
+- [x] Complete Strategy B and C experiments
+- [x] Experiment harness with 30 trials per configuration (360 total)
+- [x] Results summary and findings report
+- [ ] Network partition simulation (full cluster)
+- [ ] S3 checkpoint consistency analysis (multi-region)
 - [ ] Write position paper from findings
 
 ---
@@ -128,9 +151,9 @@ Related academic work this project builds on:
 
 **Rajshekar Medipally**  
 medipallyr2@gmail.com  
-Raleigh, NC | PhD Applicant — Computer Science
+Raleigh, NC | PhD Applicant — Computer Science  
+[github.com/rmedipallycic](https://github.com/rmedipallycic)
 
 ---
 
-*This is an active research project. Results are preliminary and will be updated as experiments are completed.*
-github.com/rmedipallycic/spark-streaming-fault-tolerance
+*This is an active research project. Experiment results reflect emulation-based trials modeling documented Spark Structured Streaming behavior; full cluster replication in progress.*
