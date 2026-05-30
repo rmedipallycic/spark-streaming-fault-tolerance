@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fault Tolerance Benchmark Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f9fa; --card: #ffffff; --border: #e0e0e0;
+    --text: #1a1a2e; --muted: #666; --spark: #2196F3; --flink: #00897B;
+    --danger: #e53935; --warn: #fb8c00; --ok: #43a047;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .card h2 { font-size: 13px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .big-num { font-size: 32px; font-weight: 700; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-top: 4px; font-weight: 500; }
+  .tag-green { background: #e8f5e9; color: #2e7d32; }
+  .tag-red   { background: #ffebee; color: #c62828; }
+  .tag-blue  { background: #e3f2fd; color: #1565c0; }
+  .section-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--text); color: #fff; padding: 8px 12px; text-align: left; font-weight: 500; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: #fafafa; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .pill-red   { background: #ffebee; color: #c62828; }
+  .pill-green { background: #e8f5e9; color: #2e7d32; }
+  .pill-blue  { background: #e3f2fd; color: #1565c0; }
+  .pill-gray  { background: #f5f5f5; color: #555; }
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar { height: 10px; border-radius: 5px; }
+  canvas { max-height: 260px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 8px; font-size: 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+</style>
+</head>
+<body>
+<h1>Fault Tolerance Benchmark Dashboard</h1>
+<p class="subtitle">Spark vs Flink · 720 trials · 6 strategies · 4 failure scenarios · github.com/rmedipallycic/spark-streaming-fault-tolerance</p>
+
+<!-- KPI cards -->
+<div class="grid">
+  <div class="card">
+    <h2>Total trials</h2>
+    <div class="big-num">720</div>
+    <span class="tag tag-blue">360 Spark + 360 Flink</span>
+  </div>
+  <div class="card">
+    <h2>Best throughput</h2>
+    <div class="big-num">58.2k</div>
+    <span class="tag tag-blue">Flink F2 — rec/sec</span>
+  </div>
+  <div class="card">
+    <h2>Worst recovery</h2>
+    <div class="big-num">20.8s</div>
+    <span class="tag tag-red">Spark B — driver failure</span>
+  </div>
+  <div class="card">
+    <h2>Max dup rate</h2>
+    <div class="big-num">12.2%</div>
+    <span class="tag tag-red">Spark B — checkpoint corruption</span>
+  </div>
+  <div class="card">
+    <h2>Flink dup rate</h2>
+    <div class="big-num">0.00%</div>
+    <span class="tag tag-green">All Flink strategies</span>
+  </div>
+  <div class="card">
+    <h2>Recommended</h2>
+    <div class="big-num" style="font-size:22px;padding-top:6px">Flink F1</div>
+    <span class="tag tag-green">Best correctness + throughput</span>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="grid2">
+  <div class="card">
+    <div class="section-title">Baseline throughput (rec/sec)</div>
+    <div class="legend">
+      <span><span class="dot" style="background:#2196F3"></span>Spark</span>
+      <span><span class="dot" style="background:#00897B"></span>Flink</span>
+    </div>
+    <canvas id="tpChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="section-title">Recovery latency — driver failure (ms)</div>
+    <div class="legend">
+      <span><span class="dot" style="background:#2196F3"></span>Spark</span>
+      <span><span class="dot" style="background:#00897B"></span>Flink</span>
+    </div>
+    <canvas id="latChart"></canvas>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="section-title">Silent duplicate rate — checkpoint corruption (%)</div>
+    <canvas id="dupChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="section-title">Throughput vs correctness trade-off</div>
+    <canvas id="scatterChart"></canvas>
+  </div>
+</div>
+
+<!-- Results table -->
+<div class="card">
+  <div class="section-title">Full results summary</div>
+  <table>
+    <thead><tr>
+      <th>System</th><th>Strategy</th><th>Mechanism</th>
+      <th>Throughput</th><th>Recovery (driver)</th><th>Dup rate</th><th>Verdict</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>Spark</td><td>A</td><td>1s micro-batch</td><td>41,165</td><td>5,244ms</td>
+        <td><span class="pill pill-blue">3.31%</span></td>
+        <td><span class="pill pill-gray">Dev/test</span></td></tr>
+      <tr><td>Spark</td><td>B</td><td>30s interval</td><td>51,268</td><td>20,808ms</td>
+        <td><span class="pill pill-red">12.21%</span></td>
+        <td><span class="pill pill-red">Not recommended</span></td></tr>
+      <tr><td>Spark</td><td>C</td><td>Async WAL 10s</td><td>46,743</td><td>8,878ms</td>
+        <td><span class="pill pill-blue">1.96%</span></td>
+        <td><span class="pill pill-blue">Best Spark option</span></td></tr>
+      <tr><td>Flink</td><td>F1</td><td>Aligned barriers</td><td>54,800</td><td>7,560ms</td>
+        <td><span class="pill pill-green">0.00%</span></td>
+        <td><span class="pill pill-green">Recommended</span></td></tr>
+      <tr><td>Flink</td><td>F2</td><td>Unaligned barriers</td><td>58,200</td><td>10,440ms</td>
+        <td><span class="pill pill-green">0.00%</span></td>
+        <td><span class="pill pill-green">High throughput</span></td></tr>
+      <tr><td>Flink</td><td>F3</td><td>Incremental RocksDB</td><td>52,100</td><td>13,110ms</td>
+        <td><span class="pill pill-green">0.00%</span></td>
+        <td><span class="pill pill-green">Large state</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const labels = ['Spark A','Spark B','Spark C','Flink F1','Flink F2','Flink F3'];
+const sparkC = ['#2196F3','#FF5722','#4CAF50'];
+const flinkC = ['#9C27B0','#FF9800','#00BCD4'];
+const allC = [...sparkC, ...flinkC];
+
+new Chart(document.getElementById('tpChart'), {
+  type: 'bar',
+  data: { labels,
+    datasets: [{ data: [41165,51268,46743,54800,58200,52100],
+      backgroundColor: allC, borderRadius: 5 }]},
+  options: { plugins:{legend:{display:false}},
+    scales: { y: { ticks: { callback: v => v/1000+'k' } } } }
+});
+
+new Chart(document.getElementById('latChart'), {
+  type: 'bar',
+  data: { labels,
+    datasets: [{ data: [5244,20808,8878,7560,10440,13110],
+      backgroundColor: allC, borderRadius: 5 }]},
+  options: { plugins:{legend:{display:false}},
+    scales: { y: { ticks: { callback: v => (v/1000).toFixed(1)+'s' } } } }
+});
+
+new Chart(document.getElementById('dupChart'), {
+  type: 'bar',
+  data: { labels,
+    datasets: [{ data: [3.31,12.21,1.96,0,0,0],
+      backgroundColor: [
+        '#FF9800','#F44336','#2196F3',
+        '#4CAF50','#4CAF50','#4CAF50'],
+      borderRadius: 5 }]},
+  options: { plugins:{legend:{display:false}},
+    scales: { y: { max: 14, ticks: { callback: v => v+'%' } } } }
+});
+
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: { datasets: [
+    { label:'Spark A', data:[{x:41.2,y:3.31}], backgroundColor:'#2196F3', pointRadius:10 },
+    { label:'Spark B', data:[{x:51.3,y:12.21}], backgroundColor:'#FF5722', pointRadius:13 },
+    { label:'Spark C', data:[{x:46.7,y:1.96}], backgroundColor:'#4CAF50', pointRadius:10 },
+    { label:'Flink F1', data:[{x:54.8,y:0}], backgroundColor:'#9C27B0', pointRadius:10 },
+    { label:'Flink F2', data:[{x:58.2,y:0}], backgroundColor:'#FF9800', pointRadius:12 },
+    { label:'Flink F3', data:[{x:52.1,y:0}], backgroundColor:'#00BCD4', pointRadius:10 },
+  ]},
+  options: {
+    scales: {
+      x: { title:{display:true,text:'Throughput (k rec/s)'}, min:35, max:65 },
+      y: { title:{display:true,text:'Dup rate (%)'}, min:-1, max:14 }
+    },
+    plugins: { legend:{ position:'bottom', labels:{boxWidth:10,font:{size:11}} } }
+  }
+});
+</script>
+</body>
+</html>
