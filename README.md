@@ -51,12 +51,38 @@ This project empirically compares fault-tolerance mechanisms across two leading 
 
 ---
 
-## Analysis Notebooks
+## Research Artifacts
 
-| Notebook | Description | View |
+| Artifact | Description | Link |
 |----------|-------------|------|
-| `notebooks/analysis.ipynb` | Spark-only analysis with 4 charts | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/analysis.ipynb) |
-| `notebooks/spark_vs_flink_comparison.ipynb` | Full Spark vs Flink comparative analysis | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/spark_vs_flink_comparison.ipynb) |
+| Technical report | 7-section PDF with methodology, results, threats to validity | [docs/technical_report.pdf](docs/technical_report.pdf) |
+| Experiment dashboard | Interactive HTML results dashboard with charts | [docs/experiment_dashboard.html](docs/experiment_dashboard.html) |
+| Spark analysis notebook | 4 charts — throughput, latency, duplicates, heatmap | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/analysis.ipynb) |
+| Flink comparison notebook | Full Spark vs Flink comparative analysis | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/spark_vs_flink_comparison.ipynb) |
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/rmedipallycic/spark-streaming-fault-tolerance.git
+cd spark-streaming-fault-tolerance
+
+# Start Kafka + Zookeeper
+docker compose up -d
+
+# Run a single experiment
+./scripts/run_experiment.sh --framework spark --failure worker --checkpoint A
+
+# Run a Flink experiment
+./scripts/run_experiment.sh --framework flink --failure driver --checkpoint F1
+
+# Run ALL 24 configurations x 30 trials (720 total)
+./scripts/run_experiment.sh --all
+
+# View results
+jupyter notebook notebooks/spark_vs_flink_comparison.ipynb
+```
 
 ---
 
@@ -69,6 +95,8 @@ spark-streaming-fault-tolerance/
 │   ├── failure_simulator.py     # Fault injection harness
 │   ├── kafka_producer.py        # Synthetic data generator
 │   └── metrics_collector.py     # Performance metrics collection
+├── scripts/
+│   └── run_experiment.sh        # One-command experiment launcher
 ├── experiments/
 │   ├── summary.csv              # Spark results (360 trials)
 │   ├── run_simulation.py        # Spark experiment harness
@@ -80,34 +108,12 @@ spark-streaming-fault-tolerance/
 │   ├── analysis.ipynb                    # Spark analysis with charts
 │   └── spark_vs_flink_comparison.ipynb   # Cross-system comparison
 ├── docs/
-│   ├── findings.md              # Full results and analysis
+│   ├── technical_report.pdf     # Full research report
+│   ├── experiment_dashboard.html # Interactive results dashboard
+│   ├── findings.md              # Results and analysis
 │   └── experimental_setup.md   # Reproducibility guide
 ├── docker-compose.yml
 └── requirements.txt
-```
-
----
-
-## Quick Start
-
-```bash
-git clone https://github.com/rmedipallycic/spark-streaming-fault-tolerance.git
-cd spark-streaming-fault-tolerance
-
-# Start Kafka locally
-docker-compose up -d
-
-# Run Spark pipeline
-python src/pipeline.py --strategy A --checkpoint local --scenario baseline
-
-# Run experiment harness
-python experiments/run_simulation.py
-
-# View Spark analysis
-jupyter notebook notebooks/analysis.ipynb
-
-# View Spark vs Flink comparison
-jupyter notebook notebooks/spark_vs_flink_comparison.ipynb
 ```
 
 ---
@@ -125,6 +131,25 @@ jupyter notebook notebooks/spark_vs_flink_comparison.ipynb
 
 ---
 
+## Fault Injection
+
+The `scripts/run_experiment.sh` launcher automates failure injection mid-run:
+
+```bash
+# Kill a worker node
+./scripts/run_experiment.sh --framework spark --failure worker --checkpoint A
+
+# Corrupt checkpoint metadata
+./scripts/run_experiment.sh --framework flink --failure checkpoint --checkpoint F1
+
+# Simulate network partition (100% packet loss)
+./scripts/run_experiment.sh --framework spark --failure network --checkpoint C
+```
+
+Failure injection methods: `docker kill` for node/driver failures, `dd if=/dev/urandom` for checkpoint corruption, `tc netem loss 100%` for network partition.
+
+---
+
 ## Research Context
 
 This project is part of my preparation for doctoral research in **distributed ML systems, fault-tolerant stream processing, and ML pipeline infrastructure**.
@@ -133,6 +158,7 @@ Related academic work:
 - Zaharia et al. (2013). *Discretized Streams: Fault-Tolerant Streaming Computation at Scale.* SOSP.
 - Carbone et al. (2015). *Apache Flink: Stream and Batch Processing in a Single Engine.* IEEE Data Engineering Bulletin.
 - Chandy & Lamport (1985). *Distributed Snapshots: Determining Global States of Distributed Systems.* ACM TOCS.
+- Das et al. (2022). *Fault Tolerance in Stream Processing.* ACM SIGMOD.
 
 ---
 
@@ -142,8 +168,11 @@ Related academic work:
 - [x] Kafka producer and failure simulator
 - [x] Spark Strategy A, B, C experiments (360 trials)
 - [x] Flink F1, F2, F3 experiments (360 trials)
+- [x] One-command experiment launcher with fault injection
 - [x] Spark vs Flink comparative analysis notebook
 - [x] Results summary and findings report
+- [x] Technical report PDF
+- [x] Interactive experiment dashboard
 - [ ] Network partition simulation (full cluster)
 - [ ] S3 checkpoint consistency analysis (multi-region)
 - [ ] Write position paper from findings
