@@ -12,11 +12,34 @@
 
 ---
 
-## Motivation
+## Novel Contribution: Adaptive Checkpoint Selection
 
-During 10+ years operating enterprise-scale distributed data pipelines at First Citizens Bank and Fresenius Medical Care North America, I repeatedly encountered **silent partial failures in multi-stage stream processing pipelines** — where a stage fails mid-batch, checkpoints inconsistently, and downstream consumers receive duplicate or incomplete records without triggering alerts.
+Existing checkpointing strategies use **fixed intervals** — Spark A (1s), Spark B (30s), Spark C (10s WAL). This is suboptimal: a 30s interval has low overhead during stable operation but catastrophic replay cost after failure; a 1s interval minimizes replay but introduces constant overhead.
 
-This project empirically compares fault-tolerance mechanisms across two leading stream processing systems — Spark Structured Streaming and Apache Flink — under realistic failure scenarios, and measures the cost of each approach across three dimensions: throughput, recovery latency, and data correctness.
+This project proposes and evaluates **Adaptive Checkpoint Selection** — a feedback control algorithm that dynamically adjusts the checkpoint interval based on three pipeline health signals:
+
+1. **Throughput variance** — coefficient of variation of recent throughput samples
+2. **Error pressure** — exceptions per 1,000 records in the current window  
+3. **Failure recency** — exponential decay signal since the last detected failure
+
+The algorithm computes a risk score [0, 1] every 5 seconds and adjusts accordingly:
+- Risk > 0.45 → tighten interval by 30% (more frequent checkpoints)
+- 4 consecutive stable windows → relax interval by 20%
+- Bounded: 2s ≤ interval ≤ 45s
+
+**Results across 480 trials (30 per configuration):**
+
+| Strategy | Throughput | Recovery (driver) | Dup rate (corruption) |
+|----------|-----------|------------------|----------------------|
+| Strategy A (1s fixed) | 46,170 rec/s | 5,061ms | 0.183% |
+| Strategy B (30s fixed) | 46,058 rec/s | 25,334ms | 2.961% |
+| Strategy C (10s WAL) | 45,739 rec/s | 4,993ms | 0.207% |
+| **Adaptive (proposed)** | **45,794 rec/s** | **12,264ms** | **0.036%** |
+
+The adaptive algorithm achieves the **lowest duplicate rate of all Spark strategies** (0.036%) while maintaining competitive throughput — the right trade-off for ML feature pipelines where data correctness is critical.
+
+> Implementation: [`src/adaptive_checkpoint.py`](src/adaptive_checkpoint.py)  
+> Results: [`experiments/adaptive/summary.csv`](experiments/adaptive/summary.csv)
 
 ---
 
@@ -27,6 +50,7 @@ This project empirically compares fault-tolerance mechanisms across two leading 
 | Spark A | High-frequency micro-batch checkpoint (1s) | Exactly-once |
 | Spark B | Interval-based checkpoint (30s) | Exactly-once |
 | Spark C | Async WAL checkpoint (10s) | Exactly-once |
+| **Adaptive** | **Risk-based dynamic interval (2–45s)** | **Exactly-once** |
 | Flink F1 | Aligned Chandy-Lamport barrier snapshots (10s) | Exactly-once |
 | Flink F2 | Unaligned barrier snapshots (10s) | Exactly-once |
 | Flink F3 | Incremental RocksDB snapshots (30s) | Exactly-once |
@@ -37,17 +61,17 @@ This project empirically compares fault-tolerance mechanisms across two leading 
 
 ## Key Findings
 
-> Full results in [`experiments/summary.csv`](experiments/summary.csv), [`experiments/flink/flink_summary.csv`](experiments/flink/flink_summary.csv), and [`docs/findings.md`](docs/findings.md)
+> Full results in [`experiments/summary.csv`](experiments/summary.csv), [`experiments/flink/flink_summary.csv`](experiments/flink/flink_summary.csv), [`experiments/adaptive/summary.csv`](experiments/adaptive/summary.csv), and [`docs/findings.md`](docs/findings.md)
 
-1. **Flink's barrier protocol eliminates silent duplicates** — Under checkpoint corruption, Spark strategies produced silent duplicate records at 1.96%–12.21% with no exception raised. All Flink strategies produced **0.00%** duplicate rate. The Chandy-Lamport barrier protocol prevents silent duplicates by construction.
+1. **Adaptive checkpointing achieves the lowest Spark duplicate rate** — 0.036% under checkpoint corruption, 5× lower than Strategy C (WAL) and 82× lower than Strategy B, while maintaining competitive throughput.
 
-2. **Throughput gap is smaller than expected** — Flink F1 (54,800 rec/s) vs Spark B (51,268 rec/s) is only 6.9% — suggesting Spark's correctness risk is not offset by proportional throughput gains.
+2. **Flink's barrier protocol eliminates silent duplicates** — All Flink strategies produced 0.00% duplicate rate vs 0.036%–2.961% for Spark strategies. The Chandy-Lamport barrier protocol prevents silent duplicates by construction.
 
-3. **Recovery latency profiles differ within each system** — Spark A recovers fastest (5,244ms) due to frequent small checkpoints. Spark B is the worst performer (20,808ms). Flink F1 delivers competitive recovery (7,560ms) with stronger correctness guarantees.
+3. **Throughput gap between systems is smaller than expected** — Flink F1 (54,800 rec/s) vs Spark B (51,268 rec/s) is only 6.9%, suggesting Spark's correctness risk is not offset by proportional throughput gains.
 
-4. **WAL is the best Spark strategy but cannot match Flink** — Spark C (WAL) reduces duplicate rate to 1.96% vs Flink's 0.00% — a meaningful gap for ML feature pipelines where data correctness is critical.
+4. **Recovery latency scales non-linearly with checkpoint interval** — Spark B (30s fixed) takes 25,334ms to recover from driver failure vs 5,061ms for Strategy A. Adaptive falls between these at 12,264ms with dramatically better correctness.
 
-5. **For ML feature pipelines: Flink F1 is the recommended strategy** — highest throughput among exactly-once systems, moderate recovery latency, zero silent duplicates.
+5. **For ML feature pipelines: Flink F1 is the recommended production strategy** — zero duplicates, highest throughput among exactly-once systems. Adaptive checkpointing is the recommended strategy when Spark must be used.
 
 ---
 
@@ -74,11 +98,14 @@ docker compose up -d
 # Run a single experiment
 ./scripts/run_experiment.sh --framework spark --failure worker --checkpoint A
 
-# Run a Flink experiment
-./scripts/run_experiment.sh --framework flink --failure driver --checkpoint F1
+# Run adaptive checkpointing experiment
+./scripts/run_experiment.sh --framework spark --failure driver --checkpoint adaptive
 
 # Run ALL 24 configurations x 30 trials (720 total)
 ./scripts/run_experiment.sh --all
+
+# Run adaptive algorithm standalone
+python src/adaptive_checkpoint.py
 
 # View results
 jupyter notebook notebooks/spark_vs_flink_comparison.ipynb
@@ -91,27 +118,31 @@ jupyter notebook notebooks/spark_vs_flink_comparison.ipynb
 ```
 spark-streaming-fault-tolerance/
 ├── src/
-│   ├── pipeline.py              # Spark Structured Streaming pipeline
-│   ├── failure_simulator.py     # Fault injection harness
-│   ├── kafka_producer.py        # Synthetic data generator
-│   └── metrics_collector.py     # Performance metrics collection
+│   ├── pipeline.py                  # Spark Structured Streaming pipeline
+│   ├── adaptive_checkpoint.py       # Adaptive checkpoint algorithm (novel)
+│   ├── failure_simulator.py         # Fault injection harness
+│   ├── kafka_producer.py            # Synthetic data generator
+│   └── metrics_collector.py         # Performance metrics collection
 ├── scripts/
-│   └── run_experiment.sh        # One-command experiment launcher
+│   └── run_experiment.sh            # One-command experiment launcher
 ├── experiments/
-│   ├── summary.csv              # Spark results (360 trials)
-│   ├── run_simulation.py        # Spark experiment harness
-│   ├── raw/                     # Per-trial Spark data (12 × 30 trials)
+│   ├── summary.csv                  # Spark results (360 trials)
+│   ├── run_simulation.py            # Spark experiment harness
+│   ├── raw/                         # Per-trial Spark data (12 × 30 trials)
+│   ├── adaptive/
+│   │   ├── summary.csv              # Adaptive algorithm results (120 trials)
+│   │   └── raw_results.csv          # Per-trial adaptive data (480 rows)
 │   └── flink/
-│       ├── flink_summary.csv    # Flink results (360 trials)
-│       └── raw/                 # Per-trial Flink data (12 × 30 trials)
+│       ├── flink_summary.csv        # Flink results (360 trials)
+│       └── raw/                     # Per-trial Flink data (12 × 30 trials)
 ├── notebooks/
-│   ├── analysis.ipynb                    # Spark analysis with charts
-│   └── spark_vs_flink_comparison.ipynb   # Cross-system comparison
+│   ├── analysis.ipynb               # Spark analysis with charts
+│   └── spark_vs_flink_comparison.ipynb  # Cross-system comparison
 ├── docs/
-│   ├── technical_report.pdf     # Full research report
-│   ├── experiment_dashboard.html # Interactive results dashboard
-│   ├── findings.md              # Results and analysis
-│   └── experimental_setup.md   # Reproducibility guide
+│   ├── technical_report.pdf         # Full research report
+│   ├── experiment_dashboard.html    # Interactive results dashboard
+│   ├── findings.md                  # Results and analysis
+│   └── experimental_setup.md       # Reproducibility guide
 ├── docker-compose.yml
 └── requirements.txt
 ```
@@ -125,15 +156,14 @@ spark-streaming-fault-tolerance/
 | Spark | 3.5 (Structured Streaming) |
 | Flink | 1.18 (DataStream API) |
 | Kafka | 3.6 |
-| Trials | 30 per configuration × 12 configurations × 2 systems = **720 total** |
+| Spark + Adaptive trials | 30 per configuration × 16 configurations = **480 total** |
+| Flink trials | 30 per configuration × 12 configurations = **360 total** |
 | Records | 1M per trial |
 | Metrics | Throughput (rec/s), recovery latency (ms), duplicate rate (%) |
 
 ---
 
 ## Fault Injection
-
-The `scripts/run_experiment.sh` launcher automates failure injection mid-run:
 
 ```bash
 # Kill a worker node
@@ -146,7 +176,7 @@ The `scripts/run_experiment.sh` launcher automates failure injection mid-run:
 ./scripts/run_experiment.sh --framework spark --failure network --checkpoint C
 ```
 
-Failure injection methods: `docker kill` for node/driver failures, `dd if=/dev/urandom` for checkpoint corruption, `tc netem loss 100%` for network partition.
+Failure injection: `docker kill` for node/driver failures, `dd if=/dev/urandom` for checkpoint corruption, `tc netem loss 100%` for network partition.
 
 ---
 
@@ -168,14 +198,15 @@ Related academic work:
 - [x] Kafka producer and failure simulator
 - [x] Spark Strategy A, B, C experiments (360 trials)
 - [x] Flink F1, F2, F3 experiments (360 trials)
+- [x] **Adaptive checkpoint algorithm — novel contribution**
 - [x] One-command experiment launcher with fault injection
 - [x] Spark vs Flink comparative analysis notebook
 - [x] Results summary and findings report
 - [x] Technical report PDF
 - [x] Interactive experiment dashboard
-- [ ] Network partition simulation (full cluster)
+- [ ] Full cluster replication (AWS EMR + Kinesis Data Analytics)
 - [ ] S3 checkpoint consistency analysis (multi-region)
-- [ ] Write position paper from findings
+- [ ] Workshop/preprint submission
 
 ---
 
@@ -188,4 +219,4 @@ Raleigh, NC | PhD Applicant — Computer Science
 
 ---
 
-*720 total trials across 6 strategies and 4 failure scenarios. Results reflect emulation-based experiments modeling documented Spark and Flink behavior; full cluster replication in progress.*
+*840 total trials across 7 strategies and 4 failure scenarios. Results reflect emulation-based experiments modeling documented Spark and Flink behavior; full cluster replication in progress.*
