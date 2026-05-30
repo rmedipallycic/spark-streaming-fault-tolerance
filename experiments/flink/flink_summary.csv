@@ -1,0 +1,13 @@
+system,strategy,strategy_name,scenario,trials,throughput_mean,throughput_stddev,recovery_latency_mean_ms,recovery_latency_stddev_ms,duplicate_rate_mean_pct,trials_with_data_loss
+Flink,F1,Aligned Barriers (Exactly-Once),baseline,30,54759.4,2080.8,0,0,0.0,0
+Flink,F1,Aligned Barriers (Exactly-Once),checkpoint_corruption,30,49587.1,1611.3,8768.0,807.2,0.0,0
+Flink,F1,Aligned Barriers (Exactly-Once),driver_failure,30,47626.1,1844.4,7845.1,714.8,0.0,0
+Flink,F1,Aligned Barriers (Exactly-Once),node_failure,30,51008.2,1943.3,4162.1,317.7,0.0,0
+Flink,F2,"Unaligned Barriers (Exactly-Once, Low Latency)",baseline,30,58551.1,2055.3,0,0,0.0,0
+Flink,F2,"Unaligned Barriers (Exactly-Once, Low Latency)",checkpoint_corruption,30,51473.6,2040.3,12367.7,976.9,0.0,0
+Flink,F2,"Unaligned Barriers (Exactly-Once, Low Latency)",driver_failure,30,50489.5,2425.6,10101.2,939.0,0.0,0
+Flink,F2,"Unaligned Barriers (Exactly-Once, Low Latency)",node_failure,30,53498.3,2270.6,5782.9,443.6,0.0,0
+Flink,F3,Incremental Checkpointing (RocksDB),baseline,30,51528.4,1950.8,0,0,0.0,0
+Flink,F3,Incremental Checkpointing (RocksDB),checkpoint_corruption,30,46333.7,1946.5,14356.6,1661.6,0.0,0
+Flink,F3,Incremental Checkpointing (RocksDB),driver_failure,30,45246.5,1705.0,12492.0,1327.5,0.0,0
+Flink,F3,Incremental Checkpointing (RocksDB),node_failure,30,47990.6,2060.9,6976.2,760.5,0.0,0
