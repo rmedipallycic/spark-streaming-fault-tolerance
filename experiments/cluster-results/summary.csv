@@ -1,0 +1,13 @@
+strategy,strategy_name,scenario,scenario_name,trials,throughput_mean,throughput_stddev,throughput_min,throughput_max,recovery_latency_mean_ms,recovery_latency_stddev_ms,recovery_latency_max_ms,duplicate_rate_mean_pct,duplicate_rate_max_pct,trials_with_data_loss,total_records_lost
+A,High-Frequency Checkpointing,baseline,Baseline (No Failure),30,41165.2,1783.5,36484.1,45404.4,0,0,0,0.0,0.0,0,0
+A,High-Frequency Checkpointing,checkpoint_corruption,Checkpoint Directory Corruption,30,36450.2,1003.3,34348.2,38759.1,3633.8,462.1,4442.6,3.309,4.276,1,1452
+A,High-Frequency Checkpointing,driver_failure,Driver Node Failure During Checkpoint Write,30,35594.9,1484.9,33249.8,38448.6,5243.7,703.1,6624.7,1.474,2.474,1,710
+A,High-Frequency Checkpointing,node_failure,Executor Node Failure Mid-Batch,30,37771.1,1719.9,33600.3,40351.5,2361.0,250.6,2781.2,1.472,2.495,0,0
+B,Interval-Based Checkpointing,baseline,Baseline (No Failure),30,51268.3,2487.9,46972.1,56032.4,0,0,0,0.0,0.0,0,0
+B,Interval-Based Checkpointing,checkpoint_corruption,Checkpoint Directory Corruption,30,44529.7,2098.0,40588.9,49814.7,13862.8,1416.8,17987.4,12.213,15.417,2,3703
+B,Interval-Based Checkpointing,driver_failure,Driver Node Failure During Checkpoint Write,30,42946.3,2199.3,39182.3,50281.3,20807.6,2173.5,25185.8,1.724,2.485,1,1056
+B,Interval-Based Checkpointing,node_failure,Executor Node Failure Mid-Batch,30,46052.0,1893.0,41708.0,49343.6,8645.9,1071.3,10619.6,1.46,2.316,0,0
+C,Async WAL Checkpointing,baseline,Baseline (No Failure),30,46742.6,1537.6,42254.8,49781.6,0,0,0,0.0,0.0,0,0
+C,Async WAL Checkpointing,checkpoint_corruption,Checkpoint Directory Corruption,30,41229.6,1473.0,38922.6,44123.4,6288.4,794.3,9123.6,1.959,2.505,3,4761
+C,Async WAL Checkpointing,driver_failure,Driver Node Failure During Checkpoint Write,30,39353.1,1251.6,36568.5,41542.1,8877.9,1136.7,10833.7,1.44,2.442,3,3708
+C,Async WAL Checkpointing,node_failure,Executor Node Failure Mid-Batch,30,42419.0,1433.7,39954.3,45193.4,3769.0,406.6,4400.3,1.585,2.391,0,0
