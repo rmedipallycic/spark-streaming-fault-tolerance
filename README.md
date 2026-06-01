@@ -204,7 +204,7 @@ Related academic work:
 - [x] Results summary and findings report
 - [x] Technical report PDF
 - [x] Interactive experiment dashboard
-- [ ] Full cluster replication (AWS EMR + Kinesis Data Analytics)
+- [ ] Full cluster replication (AWS EMR + Kinesis Data Analy (AWS EMR — emr-spark-8.0.0, m5.xlarge, us-east-1)
 - [ ] S3 checkpoint consistency analysis (multi-region)
 - [ ] Workshop/preprint submission
 
