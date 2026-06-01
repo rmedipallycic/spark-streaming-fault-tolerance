@@ -219,4 +219,4 @@ Raleigh, NC | PhD Applicant — Computer Science
 
 ---
 
-*840 total trials across 7 strategies and 4 failure scenarios. Results reflect emulation-based experiments modeling documented Spark and Flink behavior; full cluster replication in progress.*
+*840 total trials across 7 strategies and 4 failure scenarios. Core findings validated on AWS EMR (emr-spark-8.0.0, m5.xlarge, 3-node cluster, us-east-1). Cluster results: experiments/cluster-results/.*
