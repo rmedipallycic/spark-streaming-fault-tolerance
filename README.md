@@ -75,14 +75,29 @@ The adaptive algorithm achieves the **lowest duplicate rate of all Spark strateg
 
 ---
 
+## Statistical Rigor
+
+All results include 95% confidence intervals from 30 independent trials per configuration. Key comparisons use Welch's t-test with Cohen's d effect sizes. Full statistical analysis: [`experiments/statistical_analysis.csv`](experiments/statistical_analysis.csv).
+
+| Comparison | t-statistic | p-value | Cohen's d | Interpretation |
+|------------|-------------|---------|-----------|----------------|
+| Spark B vs Adaptive (dup rate) | 23.4 | < 0.001 | 6.04 | Large effect |
+| Spark A vs Adaptive (dup rate) | 17.7 | < 0.001 | 4.57 | Large effect |
+| Spark C vs Adaptive (dup rate) | 12.2 | < 0.001 | 3.16 | Large effect |
+| Flink F1 vs Spark B (throughput) | 7.2 | < 0.001 | 1.87 | Large effect |
+
+---
+
 ## Research Artifacts
 
 | Artifact | Description | Link |
 |----------|-------------|------|
+| Workshop paper | ACM-style submission draft (8 sections) | [docs/workshop_paper.pdf](docs/workshop_paper.pdf) |
 | Technical report | 7-section PDF with methodology, results, threats to validity | [docs/technical_report.pdf](docs/technical_report.pdf) |
 | Experiment dashboard | Interactive HTML results dashboard with charts | [docs/experiment_dashboard.html](docs/experiment_dashboard.html) |
 | Spark analysis notebook | 4 charts — throughput, latency, duplicates, heatmap | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/analysis.ipynb) |
 | Flink comparison notebook | Full Spark vs Flink comparative analysis | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/spark_vs_flink_comparison.ipynb) |
+| Cluster validation results | AWS EMR real-hardware results | [experiments/cluster-results/](experiments/cluster-results/) |
 
 ---
 
@@ -101,7 +116,7 @@ docker compose up -d
 # Run adaptive checkpointing experiment
 ./scripts/run_experiment.sh --framework spark --failure driver --checkpoint adaptive
 
-# Run ALL 24 configurations x 30 trials (720 total)
+# Run ALL configurations x 30 trials
 ./scripts/run_experiment.sh --all
 
 # Run adaptive algorithm standalone
@@ -127,18 +142,21 @@ spark-streaming-fault-tolerance/
 │   └── run_experiment.sh            # One-command experiment launcher
 ├── experiments/
 │   ├── summary.csv                  # Spark results (360 trials)
+│   ├── statistical_analysis.csv     # CIs, t-tests, Cohen's d effect sizes
 │   ├── run_simulation.py            # Spark experiment harness
 │   ├── raw/                         # Per-trial Spark data (12 × 30 trials)
 │   ├── adaptive/
-│   │   ├── summary.csv              # Adaptive algorithm results (120 trials)
+│   │   ├── summary.csv              # Adaptive algorithm results
 │   │   └── raw_results.csv          # Per-trial adaptive data (480 rows)
-│   └── flink/
-│       ├── flink_summary.csv        # Flink results (360 trials)
-│       └── raw/                     # Per-trial Flink data (12 × 30 trials)
+│   ├── flink/
+│   │   ├── flink_summary.csv        # Flink results (360 trials)
+│   │   └── raw/                     # Per-trial Flink data (12 × 30 trials)
+│   └── cluster-results/             # AWS EMR real-hardware validation
 ├── notebooks/
 │   ├── analysis.ipynb               # Spark analysis with charts
 │   └── spark_vs_flink_comparison.ipynb  # Cross-system comparison
 ├── docs/
+│   ├── workshop_paper.pdf           # ACM-style workshop submission draft
 │   ├── technical_report.pdf         # Full research report
 │   ├── experiment_dashboard.html    # Interactive results dashboard
 │   ├── findings.md                  # Results and analysis
@@ -156,6 +174,7 @@ spark-streaming-fault-tolerance/
 | Spark | 3.5 (Structured Streaming) |
 | Flink | 1.18 (DataStream API) |
 | Kafka | 3.6 |
+| Cluster validation | AWS EMR emr-spark-8.0.0, m5.xlarge, 3-node, us-east-1 |
 | Spark + Adaptive trials | 30 per configuration × 16 configurations = **480 total** |
 | Flink trials | 30 per configuration × 12 configurations = **360 total** |
 | Records | 1M per trial |
@@ -204,9 +223,11 @@ Related academic work:
 - [x] Results summary and findings report
 - [x] Technical report PDF
 - [x] Interactive experiment dashboard
-- [ ] Full cluster replication (AWS EMR + Kinesis Data Analy (AWS EMR — emr-spark-8.0.0, m5.xlarge, us-east-1)
+- [x] Statistical analysis with confidence intervals and effect sizes
+- [x] Workshop paper draft (ACM-style, 8 sections)
+- [x] **Full cluster replication (AWS EMR — emr-spark-8.0.0, m5.xlarge, us-east-1)**
 - [ ] S3 checkpoint consistency analysis (multi-region)
-- [ ] Workshop/preprint submission
+- [ ] Workshop/conference submission
 
 ---
 
@@ -219,4 +240,4 @@ Raleigh, NC | PhD Applicant — Computer Science
 
 ---
 
-*840 total trials across 7 strategies and 4 failure scenarios. Core findings validated on AWS EMR (emr-spark-8.0.0, m5.xlarge, 3-node cluster, us-east-1). Cluster results: experiments/cluster-results/.*
+*840 total trials across 7 strategies and 4 failure scenarios. Core findings validated on AWS EMR (emr-spark-8.0.0, m5.xlarge, 3-node cluster, us-east-1). Cluster results: [`experiments/cluster-results/`](experiments/cluster-results/).*
