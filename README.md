@@ -213,7 +213,7 @@ Related academic work:
 ## Contact
 
 **Rajshekar Medipally**  
-medipallyr2@gmail.com  
+rmedipallycic@gmail.com  
 Raleigh, NC | PhD Applicant — Computer Science  
 [github.com/rmedipallycic](https://github.com/rmedipallycic)
 
