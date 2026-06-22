@@ -1,7 +1,7 @@
 # Fault Tolerance Benchmarking: Apache Spark vs Apache Flink
 
 **Author:** Rajshekar Medipally  
-**GitHub:** [github.com/rmedipallycic](https://github.com/rmedipallycic)  
+**GitHub:** [github.com/medipallyr2](https://github.com/medipallyr2)  
 **Status:** Active Research — 2025–Present
 
 ---
@@ -234,9 +234,9 @@ Related academic work:
 ## Contact
 
 **Rajshekar Medipally**  
-rmedipallycic@gmail.com  
+medipallyr2@gmail.com  
 Raleigh, NC | PhD Applicant — Computer Science  
-[github.com/rmedipallycic](https://github.com/rmedipallycic)
+[github.com/medipallyr2](https://github.com/medipallyr2)  
 
 ---
 
