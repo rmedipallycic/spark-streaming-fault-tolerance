@@ -74,8 +74,8 @@ These entries describe the configured correctness target, not an unconditional e
 
 4. **Recovery latency scales non-linearly with checkpoint interval** — Spark B (30s fixed) takes 25,334ms to recover from driver failure vs 5,061ms for Strategy A. Adaptive falls between these at 12,264ms with dramatically better correctness.
 
-5. **For ML feature pipelines:** Flink F1 is the recommended production strategy — zero duplicates, highest throughput among exactly-once systems. Adaptive checkpointing is the recommended strategy when Spark must be used.
 
+5. **For ML feature pipelines:** Flink F1 is the recommended production strategy in this study because it produced zero observed duplicates while providing the lowest recovery latency among the tested Flink strategies. Adaptive checkpointing is the recommended strategy when Spark must be used.
 ---
 
 ## Statistical Rigor
