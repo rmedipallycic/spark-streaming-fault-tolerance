@@ -242,4 +242,4 @@ deactivate
 
 ---
 
-*For questions or issues, contact: rmedipallyr2@gmail.com*
+*For questions or issues, contact: medipallyr2@gmail.com*
