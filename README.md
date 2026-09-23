@@ -239,7 +239,7 @@ Related academic work:
 
 **Rajshekar Medipally**
 
-**Email:** [medipallyr2@gmail.com](mailto:medipallyr2@gmail.com)
+**Email:** [rmedipallycic@gmail.com](mailto:rmedipallycic@gmail.com)
 
 **Location:** Raleigh, NC | **Ph.D. Applicant — Computer Science**
 
