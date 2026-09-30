@@ -173,7 +173,6 @@ spark-streaming-fault-tolerance/
 │   ├── experiments/adaptive/        # Simulated ACS results (480 rows)
 │   ├── flink/                       # Simulated Flink results (360 rows)
 │   └── cluster-results/             # Simulation outputs from a run on AWS EMR
-├── notebooks/                       # Analysis of simulation outputs
 ├──docs/                            # Experimental setup and future-work methodology
 ├── docker-compose.yml
 └── requirements.txt
