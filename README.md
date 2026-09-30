@@ -1,6 +1,3 @@
-Here is the complete README. Copy everything inside the block:
-
-markdown
 # Fault Tolerance in Spark Structured Streaming and Flink: A Simulation Study and Adaptive Checkpointing Prototype
 
 **Author:** Rajshekar Medipally
