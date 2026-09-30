@@ -1,241 +1,209 @@
+Here is the complete README. Copy everything inside the block:
 
-# Fault Tolerance Benchmarking: Apache Spark vs Apache Flink
+markdown
+# Fault Tolerance in Spark Structured Streaming and Flink: A Simulation Study and Adaptive Checkpointing Prototype
 
 **Author:** Rajshekar Medipally
 **GitHub:** [github.com/rmedipallycic](https://github.com/rmedipallycic)
-**Status:** Active Research — 2025–Present
+**Status:** Work in progress. Current results are from simulation; live-system experiments are planned.
+
+---
+
+## Project Status (read first)
+
+All numerical results in this repository come from **seeded simulation scripts**, not from measured Spark, Flink, Docker, or AWS EMR executions.
+
+- `experiments/run_simulation.py` and `src/adaptive_checkpoint.py` generate throughput, recovery latency, duplicate rates, and data loss using random-number models.
+- In these models, each strategy's duplicate behavior is **parameterized directly by the author**. The results therefore reflect the model's assumptions, not observed system behavior.
+- No live fault-injection experiments have been run yet. The launcher script (`scripts/run_experiment.sh`) is not yet functional (see Known Issues).
+- Draft papers in `docs/` were written before a provenance audit and overstate what was measured. They are being revised and should not be cited.
+
+What this repository currently offers:
+- A research question and an experimental design for measuring fault tolerance in stream processing
+- The design of an adaptive checkpointing algorithm (ACS)
+- A reproducible simulation harness that illustrates the intended comparison
+- A plan for live Docker and cluster experiments
 
 ---
 
 ## Research Question
 
-> How do fault-tolerance mechanisms in Apache Spark Structured Streaming and Apache Flink differ in throughput, recovery latency, and data correctness under realistic failure scenarios — and what are the implications for ML feature pipelines?
+> How do fault-tolerance mechanisms in Apache Spark Structured Streaming and Apache Flink differ in throughput, recovery latency, and data correctness under failure — and what are the implications for ML feature pipelines?
 
 ---
 
-## Novel Contribution: Adaptive Checkpoint Selection
+## Proposed Contribution: Adaptive Checkpoint Selection (ACS)
 
-Existing checkpointing strategies use fixed intervals — Spark A (1s), Spark B (30s), Spark C (10s WAL). This is suboptimal: a 30s interval has low overhead during stable operation but catastrophic replay cost after failure; a 1s interval minimizes replay but introduces constant overhead.
+Fixed checkpoint intervals trade overhead against recovery cost. A long interval (e.g., 30s) is cheap during stable operation but increases replay and duplicate exposure after a failure. A short interval (e.g., 1s) reduces replay but adds constant overhead.
 
-This project proposes and evaluates **Adaptive Checkpoint Selection** — a feedback control algorithm that dynamically adjusts the checkpoint interval based on three pipeline health signals:
+ACS is a proposed feedback controller that adjusts the checkpoint interval using three pipeline health signals:
 
 - **Throughput variance** — coefficient of variation of recent throughput samples
 - **Error pressure** — exceptions per 1,000 records in the current window
 - **Failure recency** — exponential decay signal since the last detected failure
 
-The algorithm computes a risk score **[0, 1] every 5 seconds** and adjusts accordingly:
+Every 5 seconds, ACS computes a risk score in [0, 1]:
 
-- **Risk > 0.45** → tighten interval by 30% (more frequent checkpoints)
-- **4 consecutive stable windows** → relax interval by 20%
-- **Bounded interval:** 2s ≤ interval ≤ 45s
+- **Risk > 0.45** → tighten the interval by 30%
+- **4 consecutive stable windows** → relax the interval by 20%
+- **Bounds:** 2s ≤ interval ≤ 45s
 
-**Results across 120 ACS trials (30 per scenario):**
+Weights (0.4 / 0.3 / 0.3) and thresholds were chosen heuristically. They have not been tuned or validated against a live system.
 
-| Strategy | Throughput | Recovery (driver) | Obs. dup rate (corruption) |
-|----------|-----------|------------------|---------------------------|
-| Strategy A (1s fixed) | 40,829 rec/s | 5,206ms | 3.32% |
-| Strategy B (30s fixed) | 51,218 rec/s | 20,719ms | 13.09% |
-| Strategy C (10s WAL) | 46,844 rec/s | 8,898ms | 1.88% |
-| **Adaptive (proposed)** | **45,966 rec/s** | **12,428ms** | **0.32%** |
+**Engineering note:** A running Structured Streaming query cannot change its trigger interval. A live ACS implementation will require query restarts or a custom trigger. This is an open design problem for the next phase.
 
-ACS achieves ~83% lower observed duplicate rate than Spark C (WAL) and 40.9× lower observed duplicate rate than Spark B, while maintaining competitive throughput. ACS does not provide exactly-once semantics under the checkpoint-corruption failure model evaluated here; it reduces the exposure window and substantially lowers the observed duplicate rate under the evaluated conditions.
-
-> Implementation: [`src/adaptive_checkpoint.py`](src/adaptive_checkpoint.py)
-> Results: [`experiments/adaptive/summary.csv`](experiments/adaptive/summary.csv)
+> Implementation (simulation): [`src/adaptive_checkpoint.py`](src/adaptive_checkpoint.py)
 
 ---
 
-## Systems Compared
+## Simulation Results
 
-| System | Fault-Tolerance Mechanism | Configured correctness target |
-|--------|--------------------------|------------------------------|
-| Spark A | High-frequency micro-batch checkpoint (1s) | Exactly-once |
-| Spark B | Interval-based checkpoint (30s) | Exactly-once |
-| Spark C | Async WAL checkpoint (10s) | Exactly-once |
-| **Adaptive** | **Risk-based dynamic interval (2–45s)** | **Exactly-once** |
-| Flink F1 | Aligned Chandy-Lamport barrier snapshots (10s) | Exactly-once |
-| Flink F2 | Unaligned barrier snapshots (10s) | Exactly-once |
-| Flink F3 | Incremental RocksDB snapshots (30s) | Exactly-once |
+### ACS vs. fixed-interval Spark strategies (simulated)
 
-These entries describe the configured correctness target, not an unconditional end-to-end guarantee. Actual behavior depends on source replayability, sink semantics, checkpoint durability, and the injected failure mode; the experiments below measure when observed behavior diverges from that target.
+Source: `src/adaptive_checkpoint.py`, 480 simulated trials (4 strategies × 4 scenarios × 30 trials). Summary: `experiments/experiments/adaptive/adaptive_summary.csv`.
 
-**Failure scenarios:** Executor node failure, driver/JobManager failure, checkpoint corruption, network partition
+| Strategy | Baseline throughput | Recovery, driver failure | Dup rate, checkpoint corruption | Dup rate, driver failure | Dup rate, node failure |
+|----------|--------------------:|-------------------------:|--------------------------------:|-------------------------:|-----------------------:|
+| Strategy A (1s fixed) | 50,049 rec/s | 5,061 ms | 0.183% | 0.188% | 0.177% |
+| Strategy B (30s fixed) | 49,909 rec/s | 25,334 ms | 2.961% | 4.432% | 5.414% |
+| Strategy C (10s WAL) | 49,951 rec/s | 4,993 ms | 0.207% | 0.102% | 0.218% |
+| ACS (proposed) | 50,010 rec/s | 12,264 ms | 0.036% | 0.066% | 0.009% |
 
----
+**Interpretation — model behavior, not system measurements:**
 
-## Key Findings
+- **Throughput:** Baseline throughput is nearly identical across strategies (~50,000 rec/s) because the simulator does not model checkpoint overhead differences. These results say nothing about the throughput cost of ACS.
+- **Recovery latency:** Recovery time in the simulator equals the time since the last checkpoint, evaluated on a 5-second simulation tick. This is why Strategy A (1s interval) shows ~5,000 ms rather than ~1,000 ms. ACS shows longer driver-failure recovery than Strategies A and C in this model.
+- **Duplicate rate:** ACS has the lowest duplicate rate in all three failure scenarios. In this simulator, ACS's duplicate rate is computed from its replay window, while the fixed strategies use constant duplicate-rate parameters. The advantage therefore follows from how the model was written. It illustrates the mechanism ACS is designed to exploit; live experiments are needed to test whether it exists in real Spark.
 
-> Full results in [`experiments/summary.csv`](experiments/summary.csv), [`experiments/flink/flink_summary.csv`](experiments/flink/flink_summary.csv), [`experiments/adaptive/summary.csv`](experiments/adaptive/summary.csv), and [`docs/findings.md`](docs/findings.md)
+Note: `experiments/summary.csv` comes from a separately parameterized simulator (`run_simulation.py`). Its values for Strategies A, B, and C differ from the table above.
 
-1. **Adaptive checkpointing achieves the lowest Spark observed duplicate rate** — 0.32% under checkpoint corruption, ~83% lower than Spark C (WAL) and 40.9× lower observed duplicate rate than Spark B, while maintaining competitive throughput. All improvements statistically significant (p < 0.001, Cohen's d > 3.0). ACS does not eliminate duplicates under this failure model; it reduces the exposure window.
+### Spark vs. Flink (simulated)
 
-2. **All three Flink configurations produced lower observed duplicate rates than ACS** — 0.02%–0.06% vs. 0.32% under checkpoint corruption. No direct statistical comparison among F1, F2, and F3 was performed. This is an empirical result for the tested workloads and failure injections, not a universal guarantee.
+Source: `experiments/run_simulation.py` (360 Spark trials) and the Flink simulation (360 trials).
 
-3. **Throughput gap between systems is smaller than expected** — Flink F1 (55,279 rec/s) vs Spark B (51,218 rec/s) is only 7.3%, suggesting Spark's correctness risk is not offset by proportional throughput gains.
+- **Baseline throughput:** Flink F1 54,759 rec/s vs. Spark B 51,268 rec/s, a 6.8% difference in the simulation.
+- **Duplicates:** The Flink simulation produces zero duplicates and zero data loss **by construction**. Its model does not generate duplicates under any scenario. This reflects the documented design of Flink's Chandy-Lamport barrier snapshots. It is **not** an experimental finding about Flink.
 
-4. **Recovery latency scales non-linearly with checkpoint interval** — Spark B (30s fixed) takes 20,719ms to recover from driver failure vs 5,206ms for Strategy A. Adaptive falls between at 12,428ms with substantially better correctness.
+### Simulation statistics
 
-5. **Decision guidance under evaluated conditions:** All three Flink configurations are preferable for new deployments where low observed duplicate rate is required. No direct comparison among F1/F2/F3 was run. ACS is the recommended strategy when Spark must be used and sub-0.5% observed duplicate rates are acceptable.
+Welch's t-tests recalculated independently from the raw simulation data:
 
----
+| Comparison | Welch's t | p-value | Cohen's d |
+|------------|----------:|--------:|----------:|
+| Spark B vs. ACS (duplicate rate) | 28.94 | < 0.001 | 7.47 |
+| Spark A vs. ACS (duplicate rate) | 27.36 | < 0.001 | 7.06 |
+| Spark C vs. ACS (duplicate rate) | 30.66 | < 0.001 | 7.92 |
+| Flink F1 vs. Spark B (throughput) | 5.90 | < 0.001 | 1.52 |
 
-## Statistical Rigor
-
-All results include 95% confidence intervals from 30 independent trials per configuration. For the three fixed-interval Spark strategies compared with ACS, Welch's t-test (scipy.stats.ttest_ind, equal_var=False) yielded p < 0.001 and Cohen's d > 3.0. This is the only hypothesis test run on these data. Full statistical analysis: [`experiments/statistical_analysis.csv`](experiments/statistical_analysis.csv).
-
-| Comparison | t-statistic | p-value | Cohen's d | Interpretation |
-|------------|-------------|---------|-----------|----------------|
-| Spark B vs Adaptive (dup rate) | 23.4 | < 0.001 | 6.04 | Large effect |
-| Spark A vs Adaptive (dup rate) | 17.7 | < 0.001 | 4.57 | Large effect |
-| Spark C vs Adaptive (dup rate) | 12.2 | < 0.001 | 3.16 | Large effect |
-| Flink F1 vs Spark B (throughput) | 7.2 | < 0.001 | 1.87 | Large effect |
+These statistics describe separation between **simulated distributions whose means were set by the model**. They do not establish differences between real systems.
 
 ---
 
-## Research Artifacts
+## Systems Modeled
 
-| Artifact | Description | Link |
-|----------|-------------|------|
-| arXiv preprint | Peer-review-ready draft (v6 FINAL) | [docs/arxiv_draft_cs_DC_v6_FINAL.pdf](docs/arxiv_draft_cs_DC_v6_FINAL.pdf) |
-| Workshop paper | ACM-style submission draft (8 sections) | [docs/workshop_paper.pdf](docs/workshop_paper.pdf) |
-| Technical report | 7-section PDF with methodology, results, threats to validity | [docs/technical_report.pdf](docs/technical_report.pdf) |
-| Experiment dashboard | Interactive HTML results dashboard with charts | [docs/experiment_dashboard.html](docs/experiment_dashboard.html) |
-| Spark analysis notebook | 4 charts — throughput, latency, duplicates, heatmap | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/analysis.ipynb) |
-| Flink comparison notebook | Full Spark vs Flink comparative analysis | [nbviewer](https://nbviewer.org/github/rmedipallycic/spark-streaming-fault-tolerance/blob/main/notebooks/spark_vs_flink_comparison.ipynb) |
-| Cluster validation results | AWS EMR real-hardware results | [experiments/cluster-results/](experiments/cluster-results/) |
+| System | Mechanism | Intended correctness target |
+|--------|-----------|-----------------------------|
+| Spark A | Micro-batch checkpoint, 1s | Exactly-once |
+| Spark B | Micro-batch checkpoint, 30s | Exactly-once |
+| Spark C | Checkpoint with write-ahead log, 10s | Exactly-once |
+| ACS | Risk-based dynamic interval, 2–45s | Exactly-once |
+| Flink F1 | Aligned barrier snapshots, 10s | Exactly-once |
+| Flink F2 | Unaligned barrier snapshots, 10s | Exactly-once |
+| Flink F3 | Incremental RocksDB snapshots, 30s | Exactly-once |
+
+Failure scenarios modeled: executor failure, driver/JobManager failure, checkpoint corruption, network partition.
 
 ---
 
-## Quick Start
+## Planned Live Experiments
+
+The next phase replaces simulated outputs with measured ones:
+
+1. Run Spark Structured Streaming with Kafka in Docker Compose.
+2. Inject failures: `docker kill` (executor/driver), overwriting the latest offset file (checkpoint corruption), `tc netem` (network partition).
+3. Write sink records with unique IDs and compute duplicate rate = (output count − unique count) / expected count.
+4. Preserve logs, checkpoint directory snapshots before and after injection, and per-trial JSON outputs.
+5. Implement ACS against live Spark and compare it with fixed intervals.
+6. Repeat on a multi-node cluster.
+
+---
+
+## Known Issues
+
+- `src/flink_pipeline.py` is missing; the launcher's Flink path does not work.
+- `src/pipeline.py` does not accept the launcher's `--trial` argument.
+- No per-trial JSON output is produced, so the launcher's expected result files never exist.
+- `experiments/run_simulation.py` ignores the `--input` and `--output` arguments the launcher passes.
+- The aggregation step generates new simulation data instead of reading measured trial outputs.
+- `experiments/statistical_analysis.csv` was generated by a separate script that sampled around fixed means. It is not derived from the trial files, and its values do not match them. It should not be used.
+- `experiments/cluster-results/` contains copies of simulation outputs produced while running the scripts on an AWS EMR node. Because the scripts are seeded simulations, this shows only that they run in that environment. It is not a validation of results.
+
+---
+
+## How to Run the Simulations
 
 ```bash
 git clone https://github.com/rmedipallycic/spark-streaming-fault-tolerance.git
 cd spark-streaming-fault-tolerance
+pip install -r requirements.txt
 
-# Start Kafka + Zookeeper
-docker compose up -d
+# Spark/Flink simulation harness
+python experiments/run_simulation.py
 
-# Run a single experiment
-./scripts/run_experiment.sh --framework spark --failure worker --checkpoint A
-
-# Run adaptive checkpointing experiment
-./scripts/run_experiment.sh --framework spark --failure driver --checkpoint adaptive
-
-# Run ALL configurations x 30 trials
-./scripts/run_experiment.sh --all
-
-# Run adaptive algorithm standalone
+# ACS simulation
 python src/adaptive_checkpoint.py
-
-# View results
-jupyter notebook notebooks/spark_vs_flink_comparison.ipynb
 ```
 
 ---
 
 ## Project Structure
 
-```
 spark-streaming-fault-tolerance/
 ├── src/
-│   ├── pipeline.py                  # Spark Structured Streaming pipeline
-│   ├── adaptive_checkpoint.py       # Adaptive checkpoint algorithm (novel)
-│   ├── failure_simulator.py         # Fault injection harness
-│   ├── kafka_producer.py            # Synthetic data generator
-│   └── metrics_collector.py         # Performance metrics collection
+│ ├── pipeline.py # Spark Structured Streaming pipeline (runner interface incomplete)
+│ ├── adaptive_checkpoint.py # ACS algorithm + simulation
+│ ├── failure_simulator.py # Fault injection helpers
+│ ├── kafka_producer.py # Synthetic data generator
+│ └── metrics_collector.py # Metrics collection
 ├── scripts/
-│   └── run_experiment.sh            # One-command experiment launcher
+│ └── run_experiment.sh # Experiment launcher (not yet functional)
 ├── experiments/
-│   ├── summary.csv                  # Spark results (360 trials)
-│   ├── statistical_analysis.csv     # CIs, t-tests, Cohen's d effect sizes
-│   ├── run_simulation.py            # Spark experiment harness
-│   ├── raw/                         # Per-trial Spark data (12 × 30 trials)
-│   ├── adaptive/
-│   │   ├── summary.csv              # Adaptive algorithm results (120 trials)
-│   │   └── raw_results.csv          # Per-trial adaptive data
-│   ├── flink/
-│   │   ├── flink_summary.csv        # Flink results (360 trials)
-│   │   └── raw/                     # Per-trial Flink data (12 × 30 trials)
-│   └── cluster-results/             # AWS EMR real-hardware validation
-├── notebooks/
-│   ├── analysis.ipynb               # Spark analysis with charts
-│   └── spark_vs_flink_comparison.ipynb  # Cross-system comparison
-├── docs/
-│   ├── arxiv_draft_cs_DC_v6_FINAL.pdf  # arXiv preprint draft
-│   ├── workshop_paper.pdf           # ACM-style workshop submission draft
-│   ├── technical_report.pdf         # Full research report
-│   ├── experiment_dashboard.html    # Interactive results dashboard
-│   ├── findings.md                  # Results and analysis
-│   ├── future_work.md               # S3 multi-region methodology
-│   └── experimental_setup.md        # Reproducibility guide
+│ ├── run_simulation.py # Spark/Flink simulation harness
+│ ├── summary.csv # Simulated Spark results
+│ ├── raw/ # Simulated per-trial Spark data
+│ ├── experiments/adaptive/ # Simulated ACS results (480 rows)
+│ ├── flink/ # Simulated Flink results (360 rows)
+│ └── cluster-results/ # Simulation outputs from a run on AWS EMR
+├── notebooks/ # Analysis of simulation outputs
+├── docs/ # Drafts under revision (see Project Status)
 ├── docker-compose.yml
 └── requirements.txt
-```
+
 
 ---
 
-## Experimental Setup
+## Related Work
 
-| Component | Configuration |
-|-----------|---------------|
-| Spark | 4.0.2 via emr-spark-8.0.0 (Structured Streaming) |
-| Flink | 1.18 (DataStream API) |
-| Kafka | 3.6 |
-| Cluster validation | AWS EMR, m5.xlarge × 3, us-east-1 |
-| Spark + Adaptive trials | 30 per configuration × 16 configurations = **480 total** |
-| Flink trials | 30 per configuration × 12 configurations = **360 total** |
-| Records | 1M per trial |
-| Metrics | Throughput (rec/s), recovery latency (ms), duplicate rate (%) |
-
----
-
-## Fault Injection
-
-```bash
-# Kill a worker node
-./scripts/run_experiment.sh --framework spark --failure worker --checkpoint A
-
-# Corrupt checkpoint metadata
-./scripts/run_experiment.sh --framework flink --failure checkpoint --checkpoint F1
-
-# Simulate network partition (100% packet loss)
-./scripts/run_experiment.sh --framework spark --failure network --checkpoint C
-```
-
-Failure injection: `docker kill` for node/driver failures, `dd if=/dev/urandom` for checkpoint corruption, `tc netem loss 100%` for network partition.
-
----
-
-## Research Context
-
-This project is part of my preparation for doctoral research in **distributed ML systems, fault-tolerant stream processing, and ML pipeline infrastructure**.
-
-Related academic work:
 - Zaharia et al. (2013). *Discretized Streams: Fault-Tolerant Streaming Computation at Scale.* SOSP.
 - Carbone et al. (2015). *Apache Flink: Stream and Batch Processing in a Single Engine.* IEEE Data Engineering Bulletin.
+- Carbone et al. (2017). *State Management in Apache Flink.* VLDB.
 - Chandy & Lamport (1985). *Distributed Snapshots: Determining Global States of Distributed Systems.* ACM TOCS.
-- Das et al. (2022). *Fault Tolerance in Stream Processing.* ACM SIGMOD.
+- Karimov et al. (2018). *Benchmarking Distributed Stream Processing Engines.* ICDE.
 
 ---
 
 ## Roadmap
 
-- [x] Baseline Spark pipeline implementation
-- [x] Kafka producer and failure simulator
-- [x] Spark Strategy A, B, C experiments (360 trials)
-- [x] Flink F1, F2, F3 experiments (360 trials)
-- [x] Adaptive checkpoint algorithm — novel contribution
-- [x] One-command experiment launcher with fault injection
-- [x] Spark vs Flink comparative analysis notebook
-- [x] Results summary and findings report
-- [x] Technical report PDF
-- [x] Interactive experiment dashboard
-- [x] Statistical analysis with confidence intervals and effect sizes
-- [x] Workshop paper draft (ACM-style, 8 sections)
-- [x] arXiv preprint draft (v6 FINAL)
-- [x] Full cluster replication (AWS EMR — emr-spark-8.0.0, m5.xlarge, us-east-1)
-- [ ] S3 checkpoint consistency analysis (multi-region)
-- [ ] Workshop/conference submission
+- [x] Research question and experimental design
+- [x] ACS algorithm design
+- [x] Simulation harness (Spark, Flink, ACS)
+- [x] Provenance audit of simulation results
+- [ ] Fix runner interface (`--trial`, JSON output, real aggregator)
+- [ ] Implement Flink runner
+- [ ] Live Docker Compose experiments with preserved logs
+- [ ] Live ACS implementation against Spark
+- [ ] Multi-node cluster experiments
+- [ ] Revise draft papers using measured results
 
 ---
 
@@ -243,8 +211,5 @@ Related academic work:
 
 **Rajshekar Medipally**
 rmedipallycic@gmail.com
-Raleigh, NC | PhD Applicant — Computer Science
+PhD Applicant — Computer Science
 [github.com/rmedipallycic](https://github.com/rmedipallycic)
-
----
-
