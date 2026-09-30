@@ -155,27 +155,28 @@ python src/adaptive_checkpoint.py
 
 ## Project Structure
 
+```
 spark-streaming-fault-tolerance/
 ├── src/
-│ ├── pipeline.py # Spark Structured Streaming pipeline (runner interface incomplete)
-│ ├── adaptive_checkpoint.py # ACS algorithm + simulation
-│ ├── failure_simulator.py # Fault injection helpers
-│ ├── kafka_producer.py # Synthetic data generator
-│ └── metrics_collector.py # Metrics collection
+│   ├── pipeline.py                  # Spark Structured Streaming pipeline (runner interface incomplete)
+│   ├── adaptive_checkpoint.py       # ACS algorithm + simulation
+│   ├── failure_simulator.py         # Fault injection helpers
+│   ├── kafka_producer.py            # Synthetic data generator
+│   └── metrics_collector.py         # Metrics collection
 ├── scripts/
-│ └── run_experiment.sh # Experiment launcher (not yet functional)
+│   └── run_experiment.sh            # Experiment launcher (not yet functional)
 ├── experiments/
-│ ├── run_simulation.py # Spark/Flink simulation harness
-│ ├── summary.csv # Simulated Spark results
-│ ├── raw/ # Simulated per-trial Spark data
-│ ├── experiments/adaptive/ # Simulated ACS results (480 rows)
-│ ├── flink/ # Simulated Flink results (360 rows)
-│ └── cluster-results/ # Simulation outputs from a run on AWS EMR
-├── notebooks/ # Analysis of simulation outputs
-├── docs/ # Drafts under revision (see Project Status)
+│   ├── run_simulation.py            # Spark/Flink simulation harness
+│   ├── summary.csv                  # Simulated Spark results
+│   ├── raw/                         # Simulated per-trial Spark data
+│   ├── experiments/adaptive/        # Simulated ACS results (480 rows)
+│   ├── flink/                       # Simulated Flink results (360 rows)
+│   └── cluster-results/             # Simulation outputs from a run on AWS EMR
+├── notebooks/                       # Analysis of simulation outputs
+├── docs/                            # Drafts under revision (see Project Status)
 ├── docker-compose.yml
 └── requirements.txt
-
+```
 
 ---
 
