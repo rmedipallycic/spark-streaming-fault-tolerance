@@ -1,6 +1,7 @@
 #!/bin/bash
 # Live grid: strategies A (1 s) and B (30 s) x failures x sinks x TRIALS.
 #   TRIALS=10 bash live/run_grid.sh        # measured runs -> experiments/live/ (about 4 hours)
+#   STRATEGIES=B TRIALS=10 bash live/run_grid.sh   # only strategy B
 #   bash live/run_grid.sh smoke            # 1 short trial per failure type, Kafka source
 # Needs Kafka running: docker compose up -d zookeeper kafka
 set -u
@@ -18,7 +19,9 @@ if [ "${1:-}" = smoke ]; then
   echo "smoke done."; exit 0
 fi
 mkdir -p experiments/live
-for S in A B; do
+# leftovers from SIGKILLed Spark JVMs of earlier runs (before scratch moved to the work dir)
+rm -rf /tmp/spark-* /tmp/blockmgr-* /tmp/live-ft 2>/dev/null
+for S in ${STRATEGIES:-A B}; do
   for K in file foreachbatch; do
     python live/run_trial.py --strategy $S --failure none --sink $K --trial 0 \
       || echo "TRIAL FAILED: $S none $K 0" | tee -a experiments/live/failed_trials.txt

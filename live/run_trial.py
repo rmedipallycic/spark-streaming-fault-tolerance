@@ -66,6 +66,8 @@ def environment():
         "python": sys.version,
         "platform": platform.platform(),
         "cpu_count": os.cpu_count(),
+        "free_disk_gb": {d: round(shutil.disk_usage(d).free / 1e9, 2)
+                         for d in ("/tmp", os.path.expanduser("~")) if os.path.isdir(d)},
         "started_utc": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -197,15 +199,22 @@ def tally(counts, expected):
 # ---------------------------------------------------------------- job control
 
 class Job:
-    def __init__(self, cmd, log_path):
+    def __init__(self, cmd, log_path, tmp_dir):
         self.cmd, self.log_path, self.proc = cmd, log_path, None
+        # Spark's scratch files go to the trial's own work directory (on disk), because
+        # a SIGKILLed JVM never deletes them; the runner removes the directory afterwards.
+        os.makedirs(tmp_dir, exist_ok=True)
+        self.env = dict(os.environ)
+        self.env["SPARK_LOCAL_DIRS"] = tmp_dir
+        self.env["JAVA_TOOL_OPTIONS"] = (self.env.get("JAVA_TOOL_OPTIONS", "")
+                                         + f" -Djava.io.tmpdir={tmp_dir}").strip()
 
     def start(self):
         self.log = open(self.log_path, "a", encoding="utf-8")
         self.log.write(f"\n=== start {time.time():.6f}\n")
         self.log.flush()
         self.proc = subprocess.Popen(self.cmd, stdout=self.log, stderr=subprocess.STDOUT,
-                                     start_new_session=True)
+                                     start_new_session=True, env=self.env)
         return time.time()
 
     def kill(self):
@@ -287,7 +296,8 @@ def main():
     run_id = f"{stamp}_{a.strategy}_{a.failure}_{a.sink}_t{a.trial:02d}"
     root = a.out_root or os.path.join(REPO, "experiments", "live" if a.run_type == "measured" else "live_smoke")
     out = os.path.join(root, run_id)
-    work = os.path.join("/tmp", "live-ft", run_id)  # bulky data stays out of git
+    # bulky data stays out of git, on disk rather than in /tmp (tmpfs on some WSL setups)
+    work = os.path.join(os.path.expanduser("~"), "live-ft-work", run_id)
     os.makedirs(out, exist_ok=True)
     ckpt, sink_dir, inp = (os.path.join(work, d) for d in ("checkpoint", "output", "input"))
     stop_file = os.path.join(work, "STOP")
@@ -303,7 +313,7 @@ def main():
     ev = rec["events"]
 
     feed = KafkaFeed(a.broker, topic, a.partitions) if a.source == "kafka" else FileFeed(inp)
-    job = Job(cmd, os.path.join(out, "spark.log"))
+    job = Job(cmd, os.path.join(out, "spark.log"), os.path.join(work, "tmp"))
     ev["job_start_1"] = job.start()
     t_prod = threading.Thread(target=produce, args=(feed, a.records, a.rate, ev), daemon=True)
     ev["producer_start"] = time.time()
