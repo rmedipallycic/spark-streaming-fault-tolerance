@@ -265,7 +265,9 @@ def main():
     p.add_argument("--source", choices=["kafka", "files"], default="kafka")
     p.add_argument("--broker", default="localhost:9092")
     p.add_argument("--partitions", type=int, default=4)
-    p.add_argument("--records", type=int, default=15000)
+    # 36,000 records at 300/s = 120 s of input, so that data is still arriving after the
+    # latest possible kill (first output + 15 s + up to one 30 s trigger) and the restart
+    p.add_argument("--records", type=int, default=36000)
     p.add_argument("--rate", type=float, default=300.0, help="records per second")
     p.add_argument("--kill-after", type=float, default=15.0,
                    help="base seconds after the first committed output to inject the failure; "

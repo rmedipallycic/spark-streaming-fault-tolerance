@@ -1,6 +1,6 @@
 #!/bin/bash
 # Live grid: strategies A (1 s) and B (30 s) x failures x sinks x TRIALS.
-#   TRIALS=10 bash live/run_grid.sh        # measured runs -> experiments/live/
+#   TRIALS=10 bash live/run_grid.sh        # measured runs -> experiments/live/ (about 4 hours)
 #   bash live/run_grid.sh smoke            # 1 short trial per failure type, Kafka source
 # Needs Kafka running: docker compose up -d zookeeper kafka
 set -u
@@ -13,7 +13,7 @@ fi
 if [ "${1:-}" = smoke ]; then
   for F in none driver_failure checkpoint_corruption; do
     python live/run_trial.py --run-type smoke --strategy A --failure $F --sink file --trial 0 \
-      --records 3000 --rate 200 --kill-after 5
+      --records 12000 --rate 300 --kill-after 5
   done
   echo "smoke done."; exit 0
 fi
