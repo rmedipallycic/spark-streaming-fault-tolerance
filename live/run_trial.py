@@ -13,15 +13,28 @@ Failures:
   checkpoint_corruption SIGKILL as above, overwrite the middle of the latest
                         offsets/ file in the checkpoint with random bytes, restart
 
+Strategies (how the trigger interval is set):
+  A       fixed 1 s          B   fixed 30 s
+  C       fixed --fixed-s (default 10 s; meant to be set to ACS's average interval)
+  ACS     Adaptive Checkpoint Selection (live/acs.py), starting at 10 s
+  SWITCH  a fixed schedule of interval changes (--schedule), no ACS: measures
+          what one interval switch costs
+
+Workloads: steady (constant --rate) or bursty (rate multiplier drawn every
+--segment-s seconds from 0.5x / 1x / 3x with --workload-seed, so every strategy
+gets the same input schedule for the same seed).
+
 Nothing here computes summary statistics; live/analyze.py reads these files.
 
   python live/run_trial.py --strategy A --failure driver_failure --sink file --trial 0
+  python live/run_trial.py --strategy ACS --workload bursty --failure none --sink file --trial 0
 """
 import argparse
 import glob
 import json
 import os
 import platform
+import random
 import shutil
 import signal
 import subprocess
@@ -35,6 +48,8 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 TRIGGERS = {"A": "1 second", "B": "30 seconds"}
+STRATEGIES = ["A", "B", "C", "ACS", "SWITCH"]
+BURST_MULTIPLIERS = (0.5, 1.0, 3.0)
 
 
 def sh(cmd):
@@ -131,11 +146,24 @@ class FileFeed:
         self._flush()
 
 
-def produce(feed, n, rate, log):
+def rate_schedule(workload, rate, segment_s, seed, n_segments=200):
+    """List of (segment start offset in s, records per second)."""
+    if workload == "steady":
+        return [(0.0, rate)]
+    rng = random.Random(seed)
+    return [(i * segment_s, rate * rng.choice(BURST_MULTIPLIERS)) for i in range(n_segments)]
+
+
+def produce(feed, n, schedule, log):
+    """Send records 0..n-1 following a piecewise-constant rate schedule."""
     t0 = time.time()
+    seg, t_seg, sent_at_seg = 0, 0.0, 0
     for s in range(n):
+        while seg + 1 < len(schedule) and time.time() - t0 >= schedule[seg + 1][0]:
+            seg += 1
+            t_seg, sent_at_seg = schedule[seg][0], s
         feed.send(s)
-        lag = t0 + (s + 1) / rate - time.time()
+        lag = t0 + t_seg + (s - sent_at_seg + 1) / schedule[seg][1] - time.time()
         if lag > 0:
             time.sleep(lag)
     feed.close()
@@ -255,6 +283,22 @@ def corrupt_latest_offset(ckpt):
     return {"file": os.path.relpath(target, ckpt), "size": size}
 
 
+def control_summary(path):
+    """Counts from the job's control log; the full log stays in control.jsonl."""
+    evs = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            evs = [json.loads(line) for line in f if line.strip()]
+    except (OSError, ValueError):
+        pass
+    downs = sorted(e["downtime_s"] for e in evs if e["type"] == "first_batch_after_switch")
+    return {"switches": sum(e["type"] == "switch" for e in evs),
+            "switch_downtimes_s": [round(d, 3) for d in downs],
+            "median_switch_downtime_s": round(downs[len(downs) // 2], 3) if downs else None,
+            "intervals_s": [e["new_interval_s"] for e in evs if e["type"] == "switch"],
+            "query_starts": sum(e["type"] == "query_start" for e in evs)}
+
+
 def wait_for(pred, timeout, step=0.5):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -266,7 +310,16 @@ def wait_for(pred, timeout, step=0.5):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--strategy", choices=sorted(TRIGGERS), required=True)
+    p.add_argument("--strategy", choices=STRATEGIES, required=True)
+    p.add_argument("--fixed-s", type=float, default=10.0, help="strategy C interval (s)")
+    p.add_argument("--schedule", default="10:30,2:30,10:30,2:30,10:30",
+                   help="strategy SWITCH: interval_s:duration_s,...")
+    p.add_argument("--acs-variant", choices=["v1", "v2"], default="v1",
+                   help="ACS rule: v1 as specified, v2 revised thresholds (see live/acs.py)")
+    p.add_argument("--workload", choices=["steady", "bursty"], default="steady")
+    p.add_argument("--segment-s", type=float, default=15.0, help="bursty: seconds per rate segment")
+    p.add_argument("--workload-seed", type=int, default=None,
+                   help="bursty: schedule seed (default: the trial number)")
     p.add_argument("--failure", choices=["none", "driver_failure", "checkpoint_corruption"], required=True)
     p.add_argument("--sink", choices=["file", "foreachbatch"], required=True)
     p.add_argument("--trial", type=int, required=True)
@@ -290,10 +343,22 @@ def main():
     if a.source == "files" and a.run_type == "measured":
         p.error("the files source is only for smoke tests of the runner")
 
-    trig_s = 1.0 if a.strategy == "A" else 30.0
-    settle = a.settle if a.settle is not None else 2 * trig_s + 15.0
+    if a.strategy in TRIGGERS:
+        controller, trigger, trig_s = "fixed", TRIGGERS[a.strategy], (1.0 if a.strategy == "A" else 30.0)
+    elif a.strategy == "C":
+        controller, trigger, trig_s = "fixed", f"{int(round(a.fixed_s * 1000))} milliseconds", a.fixed_s
+    elif a.strategy == "ACS":
+        controller, trigger, trig_s = "acs", None, 10.0     # ACS starts at 10 s
+    else:
+        controller, trigger, trig_s = "schedule", None, 10.0
+    # adaptive intervals can reach 45 s, so wait long enough for one more batch
+    settle_trig = 45.0 if controller != "fixed" else trig_s
+    settle = a.settle if a.settle is not None else 2 * settle_trig + 15.0
+    seed = a.trial if a.workload_seed is None else a.workload_seed
+    schedule = rate_schedule(a.workload, a.rate, a.segment_s, seed)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    run_id = f"{stamp}_{a.strategy}_{a.failure}_{a.sink}_t{a.trial:02d}"
+    label = f"ACS{a.acs_variant}" if a.strategy == "ACS" else a.strategy
+    run_id = f"{stamp}_{label}_{a.workload}_{a.failure}_{a.sink}_t{a.trial:02d}"
     root = a.out_root or os.path.join(REPO, "experiments", "live" if a.run_type == "measured" else "live_smoke")
     out = os.path.join(root, run_id)
     # bulky data stays out of git, on disk rather than in /tmp (tmpfs on some WSL setups)
@@ -306,16 +371,24 @@ def main():
     topic = f"ft-{run_id.lower().replace('_', '-')}"
     cmd = [sys.executable, os.path.join(HERE, "stream_job.py"), "--source", a.source,
            "--broker", a.broker, "--topic", topic, "--input-dir", inp, "--checkpoint", ckpt,
-           "--output", sink_dir, "--trigger", TRIGGERS[a.strategy], "--sink", a.sink,
-           "--stop-file", stop_file]
-    rec = {"run_id": run_id, "run_type": a.run_type, "config": vars(a), "trigger": TRIGGERS[a.strategy],
-           "settle_s": settle, "environment": environment(), "events": {}}
+           "--output", sink_dir, "--sink", a.sink, "--stop-file", stop_file,
+           "--controller", controller, "--control-log", os.path.join(out, "control.jsonl"),
+           "--state-file", os.path.join(work, "controller_state.json")]
+    if trigger:
+        cmd += ["--trigger", trigger]
+    if controller == "acs":
+        cmd += ["--acs-variant", a.acs_variant]
+    if controller == "schedule":
+        cmd += ["--schedule", a.schedule]
+    rec = {"run_id": run_id, "run_type": a.run_type, "config": vars(a), "controller": controller,
+           "trigger": trigger, "settle_s": settle, "workload_schedule": schedule[:40],
+           "environment": environment(), "events": {}}
     ev = rec["events"]
 
     feed = KafkaFeed(a.broker, topic, a.partitions) if a.source == "kafka" else FileFeed(inp)
     job = Job(cmd, os.path.join(out, "spark.log"), os.path.join(work, "tmp"))
     ev["job_start_1"] = job.start()
-    t_prod = threading.Thread(target=produce, args=(feed, a.records, a.rate, ev), daemon=True)
+    t_prod = threading.Thread(target=produce, args=(feed, a.records, schedule, ev), daemon=True)
     ev["producer_start"] = time.time()
     t_prod.start()
 
@@ -379,12 +452,15 @@ def main():
     rec["raw_files"] = tally(read_seqs(raw_files(sink_dir, a.sink)), expected)
     rec["n_committed_files"] = len(committed_files(sink_dir, a.sink))
     rec["n_raw_files"] = len(raw_files(sink_dir, a.sink))
+    rec["n_batch_commits"] = len(batch_commits(ckpt))
+    rec["control"] = control_summary(os.path.join(out, "control.jsonl"))
     with open(os.path.join(out, "trial.json"), "w", encoding="utf-8") as f:
         json.dump(rec, f, indent=2)
     c = rec["committed"]
     print(f"{run_id}: outcome={rec['outcome']} expected={len(expected)} rows={c['rows']} "
           f"dup_rows={c['duplicate_rows']} missing={c['missing_records']} "
-          f"recovery={ev.get('recovery_latency_s')}")
+          f"recovery={ev.get('recovery_latency_s')} switches={rec['control']['switches']} "
+          f"median_switch_downtime={rec['control']['median_switch_downtime_s']}")
     shutil.rmtree(work, ignore_errors=True)
 
 
