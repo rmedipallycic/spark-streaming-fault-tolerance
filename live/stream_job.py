@@ -43,6 +43,7 @@ import acs as acs_mod  # noqa: E402
 SCHEMA = StructType([
     StructField("seq", LongType(), True),
     StructField("event_id", StringType(), True),
+    StructField("pt", LongType(), True),       # producer send time, epoch ms
 ])
 
 
@@ -118,7 +119,7 @@ def main():
                .load())
         rows = (raw.select(from_json(col("value").cast("string"), SCHEMA).alias("d"),
                            col("partition").alias("kpartition"), col("offset").alias("koffset"))
-                .select("d.seq", "d.event_id", "kpartition", "koffset"))
+                .select("d.seq", "d.event_id", "d.pt", "kpartition", "koffset"))
     else:
         rows = spark.readStream.schema(SCHEMA).option("maxFilesPerTrigger", 50).json(a.input_dir)
 

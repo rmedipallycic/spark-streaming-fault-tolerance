@@ -110,7 +110,8 @@ class KafkaFeed:
             self.errors += 1
 
     def send(self, seq):
-        v = json.dumps({"seq": seq, "event_id": str(uuid.uuid4())}).encode()
+        v = json.dumps({"seq": seq, "event_id": str(uuid.uuid4()),
+                        "pt": int(time.time() * 1000)}).encode()
         self.p.produce(self.topic, key=str(seq).encode(), value=v, callback=self._cb)
         self.p.poll(0)
 
@@ -132,7 +133,8 @@ class FileFeed:
         tmp = os.path.join(self.dir, f".tmp-{self.n}")
         with open(tmp, "w") as f:
             for s in self.buf:
-                f.write(json.dumps({"seq": s, "event_id": str(uuid.uuid4())}) + "\n")
+                f.write(json.dumps({"seq": s, "event_id": str(uuid.uuid4()),
+                                    "pt": int(time.time() * 1000)}) + "\n")
         os.rename(tmp, os.path.join(self.dir, f"part-{self.n:06d}.json"))
         self.acked.update(self.buf)
         self.buf, self.n = [], self.n + 1
@@ -214,6 +216,32 @@ def read_seqs(files):
     return counts
 
 
+def latency(files):
+    """End-to-end latency per record: first output file's mtime minus producer send time."""
+    first = {}
+    for fp in files:
+        try:
+            mt = os.path.getmtime(fp)
+            with open(fp, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    d = json.loads(line)
+                    if d.get("pt") is None:
+                        continue
+                    lat = mt - d["pt"] / 1000.0
+                    if d["seq"] not in first or lat < first[d["seq"]]:
+                        first[d["seq"]] = lat
+        except (OSError, json.JSONDecodeError, KeyError):
+            pass
+    xs = sorted(first.values())
+    if not xs:
+        return None
+    q = lambda p: round(xs[min(len(xs) - 1, int(p * len(xs)))], 3)  # noqa: E731
+    return {"n": len(xs), "p50_s": q(0.50), "p95_s": q(0.95), "p99_s": q(0.99), "max_s": round(xs[-1], 3)}
+
+
 def tally(counts, expected):
     dup_seqs = sorted(s for s, c in counts.items() if c > 1)
     missing = sorted(expected - set(counts))
@@ -264,6 +292,38 @@ def batch_commits(ckpt):
     return [f for f in glob.glob(os.path.join(ckpt, "commits", "*")) if os.path.basename(f).isdigit()]
 
 
+def kafka_offsets_total(path):
+    """Sum of end offsets over all partitions in one offsets/<batch> file (Kafka source)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        tot = 0
+        for v in json.loads(lines[2]).values():
+            tot += sum(int(x) for x in v.values())
+        return tot
+    except (OSError, IndexError, ValueError, AttributeError):
+        return None
+
+
+def replay_at_kill(ckpt):
+    """Work at risk when the job died: records in planned-but-uncommitted batches,
+    and seconds since the last batch commit. Read from the checkpoint before restart."""
+    offs = {int(os.path.basename(f)): f for f in glob.glob(os.path.join(ckpt, "offsets", "*"))
+            if os.path.basename(f).isdigit()}
+    comm = {int(os.path.basename(f)): f for f in batch_commits(ckpt)}
+    if not offs:
+        return None
+    last_off, last_comm = max(offs), (max(comm) if comm else None)
+    out = {"last_planned_batch": last_off, "last_committed_batch": last_comm,
+           "uncommitted_batches": last_off - (last_comm if last_comm is not None else -1)}
+    if last_comm is not None:
+        out["seconds_since_last_commit"] = round(time.time() - os.path.getmtime(comm[last_comm]), 3)
+    end = kafka_offsets_total(offs[last_off])
+    start = kafka_offsets_total(offs[last_comm]) if last_comm is not None else 0
+    out["replay_records"] = (end - start) if end is not None and start is not None else None
+    return out
+
+
 def snapshot(src, dst):
     if os.path.isdir(src):
         with tarfile.open(dst, "w:gz") as t:
@@ -292,11 +352,25 @@ def control_summary(path):
     except (OSError, ValueError):
         pass
     downs = sorted(e["downtime_s"] for e in evs if e["type"] == "first_batch_after_switch")
+    # time-weighted mean trigger interval while the query ran (for choosing strategy C)
+    tw, span, cur, t_cur = 0.0, 0.0, None, None
+    for e in evs:
+        if cur is not None and t_cur is not None:
+            tw += cur * (e["t"] - t_cur)
+            span += e["t"] - t_cur
+        if e["type"] == "query_start":
+            cur = e.get("interval_s")
+        elif e["type"] == "switch":
+            cur = e["new_interval_s"]
+        elif e["type"] == "query_stop":
+            cur = None
+        t_cur = e["t"]
     return {"switches": sum(e["type"] == "switch" for e in evs),
             "switch_downtimes_s": [round(d, 3) for d in downs],
             "median_switch_downtime_s": round(downs[len(downs) // 2], 3) if downs else None,
             "intervals_s": [e["new_interval_s"] for e in evs if e["type"] == "switch"],
-            "query_starts": sum(e["type"] == "query_start" for e in evs)}
+            "query_starts": sum(e["type"] == "query_start" for e in evs),
+            "time_weighted_interval_s": round(tw / span, 3) if span > 0 else None}
 
 
 def wait_for(pred, timeout, step=0.5):
@@ -320,6 +394,11 @@ def main():
     p.add_argument("--segment-s", type=float, default=15.0, help="bursty: seconds per rate segment")
     p.add_argument("--workload-seed", type=int, default=None,
                    help="bursty: schedule seed (default: the trial number)")
+    p.add_argument("--kill-span-s", type=float, default=None,
+                   help="kill phase spread in seconds (default: the trigger interval); set the same "
+                        "value for every strategy to give all of them the same kill times")
+    p.add_argument("--experiment", default="live",
+                   help="measured runs go to experiments/<experiment>/ (default: live)")
     p.add_argument("--failure", choices=["none", "driver_failure", "checkpoint_corruption"], required=True)
     p.add_argument("--sink", choices=["file", "foreachbatch"], required=True)
     p.add_argument("--trial", type=int, required=True)
@@ -359,7 +438,7 @@ def main():
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     label = f"ACS{a.acs_variant}" if a.strategy == "ACS" else a.strategy
     run_id = f"{stamp}_{label}_{a.workload}_{a.failure}_{a.sink}_t{a.trial:02d}"
-    root = a.out_root or os.path.join(REPO, "experiments", "live" if a.run_type == "measured" else "live_smoke")
+    root = a.out_root or os.path.join(REPO, "experiments", a.experiment if a.run_type == "measured" else "live_smoke")
     out = os.path.join(root, run_id)
     # bulky data stays out of git, on disk rather than in /tmp (tmpfs on some WSL setups)
     work = os.path.join(os.path.expanduser("~"), "live-ft-work", run_id)
@@ -404,10 +483,11 @@ def main():
     elif a.failure != "none":
         # golden-ratio sequence: trials 0..9 sample different phases of the batch cycle
         phase = (a.trial * 0.6180339887) % 1.0
-        ev["kill_delay_s"] = a.kill_after + phase * trig_s
+        ev["kill_delay_s"] = a.kill_after + phase * (a.kill_span_s if a.kill_span_s is not None else trig_s)
         time.sleep(ev["kill_delay_s"])
         ev["committed_before_failure"] = n_committed()
         ev["kill"] = job.kill()
+        rec["at_kill"] = replay_at_kill(ckpt)
         snapshot(ckpt, os.path.join(out, "checkpoint_before_restart.tgz"))
         if a.failure == "checkpoint_corruption":
             rec["corruption"] = corrupt_latest_offset(ckpt)
@@ -453,13 +533,17 @@ def main():
     rec["n_committed_files"] = len(committed_files(sink_dir, a.sink))
     rec["n_raw_files"] = len(raw_files(sink_dir, a.sink))
     rec["n_batch_commits"] = len(batch_commits(ckpt))
+    rec["latency"] = latency(committed_files(sink_dir, a.sink))
+    run_s = ev["job_end"] - ev["job_start_1"]
+    rec["commits_per_min"] = round(rec["n_batch_commits"] / (run_s / 60.0), 3) if run_s > 0 else None
     rec["control"] = control_summary(os.path.join(out, "control.jsonl"))
     with open(os.path.join(out, "trial.json"), "w", encoding="utf-8") as f:
         json.dump(rec, f, indent=2)
     c = rec["committed"]
     print(f"{run_id}: outcome={rec['outcome']} expected={len(expected)} rows={c['rows']} "
           f"dup_rows={c['duplicate_rows']} missing={c['missing_records']} "
-          f"recovery={ev.get('recovery_latency_s')} switches={rec['control']['switches']} "
+          f"recovery={ev.get('recovery_latency_s')} replay={(rec.get('at_kill') or {}).get('replay_records')} "
+          f"lat_p50={(rec['latency'] or {}).get('p50_s')} switches={rec['control']['switches']} "
           f"median_switch_downtime={rec['control']['median_switch_downtime_s']}")
     shutil.rmtree(work, ignore_errors=True)
 
