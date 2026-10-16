@@ -1,0 +1,61 @@
+run_id,strategy,workload,failure,sink,trial,outcome,expected,duplicate_rows,missing,recovery_latency_s,replay_records,seconds_since_last_commit,latency_p50_s,latency_p95_s,switches,median_switch_downtime_s,time_weighted_interval_s,batch_commits,commits_per_min_whole_run,git_commit
+20261015T232159Z_ACSv1_bursty_driver_failure_foreachbatch_t00,ACS v1,bursty,driver_failure,foreachbatch,0,ok,36000,0,0,11.02338719367981,0,5.723,2.105,11.617,8,0.538,4.423,29,8.438,369028b
+20261015T232526Z_ACSv2_bursty_driver_failure_foreachbatch_t00,ACS v2,bursty,driver_failure,foreachbatch,0,ok,36000,0,0,10.522999048233032,0,1.09,1.548,8.483,5,0.542,3.495,37,10.782,369028b
+20261015T232852Z_A_bursty_driver_failure_foreachbatch_t00,A,bursty,driver_failure,foreachbatch,0,ok,36000,0,0,14.050326824188232,0,0.108,0.798,10.077,0,,,75,38.132,369028b
+20261015T233051Z_B_bursty_driver_failure_foreachbatch_t00,B,bursty,driver_failure,foreachbatch,0,ok,36000,0,0,10.022528409957886,0,14.772,12.195,29.58,0,,,6,2.032,369028b
+20261015T233348Z_ACSv1_bursty_driver_failure_foreachbatch_t01,ACS v1,bursty,driver_failure,foreachbatch,1,ok,36000,0,0,10.519297361373901,0,7.93,3.374,9.98,11,0.536,5.76,28,7.586,369028b
+20261015T233730Z_ACSv2_bursty_driver_failure_foreachbatch_t01,ACS v2,bursty,driver_failure,foreachbatch,1,ok,36000,0,0,10.02663278579712,0,1.15,1.828,7.839,6,0.539,3.385,43,11.664,369028b
+20261015T234112Z_A_bursty_driver_failure_foreachbatch_t01,A,bursty,driver_failure,foreachbatch,1,ok,36000,0,0,11.55032467842102,0,0.819,0.744,6.072,0,,,96,43.31,369028b
+20261015T234326Z_B_bursty_driver_failure_foreachbatch_t01,B,bursty,driver_failure,foreachbatch,1,ok,36000,0,0,10.51846981048584,0,9.671,12.448,27.041,0,,,6,1.784,369028b
+20261015T234648Z_ACSv1_bursty_driver_failure_foreachbatch_t02,ACS v1,bursty,driver_failure,foreachbatch,2,ok,36000,0,0,9.5225670337677,0,4.486,1.593,8.773,11,0.54,5.366,27,7.723,369028b
+20261015T235018Z_ACSv2_bursty_driver_failure_foreachbatch_t02,ACS v2,bursty,driver_failure,foreachbatch,2,ok,36000,0,0,9.529321432113647,89,0.353,1.354,6.085,5,0.556,2.9,41,11.777,369028b
+20261015T235348Z_A_bursty_driver_failure_foreachbatch_t02,A,bursty,driver_failure,foreachbatch,2,ok,36000,0,0,10.042294979095459,0,0.46,0.709,4.005,0,,,85,42.312,369028b
+20261015T235549Z_B_bursty_driver_failure_foreachbatch_t02,B,bursty,driver_failure,foreachbatch,2,ok,36000,0,0,10.0235595703125,0,20.903,14.801,26.91,0,,,6,2.017,369028b
+20261015T235848Z_ACSv1_bursty_driver_failure_foreachbatch_t03,ACS v1,bursty,driver_failure,foreachbatch,3,ok,36000,0,0,10.523662090301514,0,3.111,5.059,11.223,10,0.545,7.307,9,2.888,369028b
+20261016T000155Z_ACSv2_bursty_driver_failure_foreachbatch_t03,ACS v2,bursty,driver_failure,foreachbatch,3,ok,36000,0,0,9.526749610900879,0,1.693,2.029,8.234,5,0.535,3.194,24,7.836,369028b
+20261016T000500Z_A_bursty_driver_failure_foreachbatch_t03,A,bursty,driver_failure,foreachbatch,3,ok,36000,0,0,9.047419786453247,150,0.967,0.716,4.299,0,,,61,38.338,369028b
+20261016T000636Z_B_bursty_driver_failure_foreachbatch_t03,B,bursty,driver_failure,foreachbatch,3,ok,36000,0,0,10.02039122581482,0,25.953,18.77,34.179,0,,,4,1.476,369028b
+20261016T000919Z_ACSv1_bursty_driver_failure_foreachbatch_t04,ACS v1,bursty,driver_failure,foreachbatch,4,ok,36000,0,0,9.52806282043457,0,10.209,3.577,11.97,13,0.533,5.775,35,9.2,369028b
+20261016T001308Z_ACSv2_bursty_driver_failure_foreachbatch_t04,ACS v2,bursty,driver_failure,foreachbatch,4,ok,36000,0,0,9.525511980056763,236,1.532,1.407,6.485,5,0.538,3.006,49,12.787,369028b
+20261016T001658Z_A_bursty_driver_failure_foreachbatch_t04,A,bursty,driver_failure,foreachbatch,4,ok,36000,0,0,9.538437843322754,0,0.489,0.756,3.93,0,,,101,43.108,369028b
+20261016T001919Z_B_bursty_driver_failure_foreachbatch_t04,B,bursty,driver_failure,foreachbatch,4,ok,36000,0,0,10.526653289794922,0,27.993,17.835,30.39,0,,,6,1.726,369028b
+20261016T002248Z_ACSv1_bursty_driver_failure_foreachbatch_t05,ACS v1,bursty,driver_failure,foreachbatch,5,ok,36000,0,0,10.521865367889404,0,0.52,5.737,10.166,9,0.544,5.753,8,2.845,369028b
+20261016T002538Z_ACSv2_bursty_driver_failure_foreachbatch_t05,ACS v2,bursty,driver_failure,foreachbatch,5,ok,36000,0,0,11.03169584274292,0,0.419,3.491,9.494,5,0.536,3.573,17,5.993,369028b
+20261016T002828Z_A_bursty_driver_failure_foreachbatch_t05,A,bursty,driver_failure,foreachbatch,5,ok,36000,0,0,10.035085916519165,0,0.305,1.101,8.819,0,,,45,33.761,369028b
+20261016T002949Z_B_bursty_driver_failure_foreachbatch_t05,B,bursty,driver_failure,foreachbatch,5,ok,36000,0,0,11.019846677780151,0,17.112,8.947,29.342,0,,,5,2.031,369028b
+20261016T003217Z_ACSv1_bursty_driver_failure_foreachbatch_t06,ACS v1,bursty,driver_failure,foreachbatch,6,ok,36000,0,0,10.025063037872314,0,4.456,3.796,10.369,11,0.538,5.918,25,6.845,369028b
+20261016T003557Z_ACSv2_bursty_driver_failure_foreachbatch_t06,ACS v2,bursty,driver_failure,foreachbatch,6,ok,36000,0,0,9.024741411209106,0,1.268,2.663,12.0,6,0.536,3.373,37,10.141,369028b
+20261016T003936Z_A_bursty_driver_failure_foreachbatch_t06,A,bursty,driver_failure,foreachbatch,6,ok,36000,0,0,9.54579472541809,0,0.679,0.94,8.845,0,,,94,43.358,369028b
+20261016T004147Z_B_bursty_driver_failure_foreachbatch_t06,B,bursty,driver_failure,foreachbatch,6,ok,36000,0,0,11.024190664291382,0,3.378,9.349,29.123,0,,,7,1.989,369028b
+20261016T004519Z_ACSv1_bursty_driver_failure_foreachbatch_t07,ACS v1,bursty,driver_failure,foreachbatch,7,ok,36000,0,0,9.520513534545898,0,4.93,3.232,9.423,11,0.534,5.495,26,7.534,369028b
+20261016T004846Z_ACSv2_bursty_driver_failure_foreachbatch_t07,ACS v2,bursty,driver_failure,foreachbatch,7,ok,36000,0,0,10.027125120162964,0,2.545,1.629,9.2,5,0.534,3.216,37,10.697,369028b
+20261016T005214Z_A_bursty_driver_failure_foreachbatch_t07,A,bursty,driver_failure,foreachbatch,7,ok,36000,0,0,9.045265913009644,0,0.127,0.763,6.125,0,,,84,42.677,369028b
+20261016T005413Z_B_bursty_driver_failure_foreachbatch_t07,B,bursty,driver_failure,foreachbatch,7,ok,36000,0,0,10.019583702087402,0,18.154,15.866,29.025,0,,,6,1.95,369028b
+20261016T005718Z_ACSv1_bursty_driver_failure_foreachbatch_t08,ACS v1,bursty,driver_failure,foreachbatch,8,ok,36000,0,0,9.022049188613892,0,1.938,2.806,9.885,13,0.538,6.433,35,8.609,369028b
+20261016T010123Z_ACSv2_bursty_driver_failure_foreachbatch_t08,ACS v2,bursty,driver_failure,foreachbatch,8,ok,36000,0,0,10.032418727874756,0,0.489,1.518,6.973,6,0.533,3.182,53,12.982,369028b
+20261016T010528Z_A_bursty_driver_failure_foreachbatch_t08,A,bursty,driver_failure,foreachbatch,8,ok,36000,0,0,9.049446821212769,150,0.95,0.705,3.611,0,,,101,39.098,369028b
+20261016T010804Z_B_bursty_driver_failure_foreachbatch_t08,B,bursty,driver_failure,foreachbatch,8,ok,36000,0,0,10.520471811294556,0,27.168,12.851,31.761,0,,,6,1.605,369028b
+20261016T011148Z_ACSv1_bursty_driver_failure_foreachbatch_t09,ACS v1,bursty,driver_failure,foreachbatch,9,ok,36000,0,0,10.017343759536743,0,6.397,3.778,10.407,10,0.541,5.861,17,5.0,369028b
+20261016T011513Z_ACSv2_bursty_driver_failure_foreachbatch_t09,ACS v2,bursty,driver_failure,foreachbatch,9,ok,36000,0,0,10.021133184432983,490,1.53,2.615,9.581,6,0.533,3.487,33,9.676,369028b
+20261016T011838Z_A_bursty_driver_failure_foreachbatch_t09,A,bursty,driver_failure,foreachbatch,9,ok,36000,0,0,10.066462755203247,0,0.758,0.792,7.564,0,,,79,41.036,369028b
+20261016T012034Z_B_bursty_driver_failure_foreachbatch_t09,B,bursty,driver_failure,foreachbatch,9,ok,36000,0,0,9.522454977035522,0,16.702,11.89,26.703,0,,,6,1.866,369028b
+20261016T095123Z_C_bursty_driver_failure_foreachbatch_t00,C (3.3 s),bursty,driver_failure,foreachbatch,0,ok,36000,0,0,11.527111530303955,0,1.104,2.115,9.387,0,,,28,13.733,369028b
+20261016T095326Z_C_bursty_driver_failure_foreachbatch_t01,C (3.3 s),bursty,driver_failure,foreachbatch,1,ok,36000,0,0,10.529654502868652,0,1.611,2.089,5.879,0,,,33,14.206,369028b
+20261016T095545Z_C_bursty_driver_failure_foreachbatch_t02,C (3.3 s),bursty,driver_failure,foreachbatch,2,ok,36000,0,0,10.031208992004395,0,1.831,1.962,4.851,0,,,30,14.057,369028b
+20261016T095754Z_C_bursty_driver_failure_foreachbatch_t03,C (3.3 s),bursty,driver_failure,foreachbatch,3,ok,36000,0,0,9.525728940963745,0,0.062,1.997,4.036,0,,,23,13.678,369028b
+20261016T095935Z_C_bursty_driver_failure_foreachbatch_t04,C (3.3 s),bursty,driver_failure,foreachbatch,4,ok,36000,0,0,10.530938148498535,0,0.9,2.007,4.356,0,,,35,14.352,369028b
+20261016T100202Z_C_bursty_driver_failure_foreachbatch_t05,C (3.3 s),bursty,driver_failure,foreachbatch,5,ok,36000,0,0,12.028383493423462,0,3.053,3.259,10.807,0,,,16,10.905,369028b
+20261016T100331Z_C_bursty_driver_failure_foreachbatch_t06,C (3.3 s),bursty,driver_failure,foreachbatch,6,ok,36000,0,0,10.032749652862549,0,1.292,2.526,9.656,0,,,32,14.066,369028b
+20261016T100548Z_C_bursty_driver_failure_foreachbatch_t07,C (3.3 s),bursty,driver_failure,foreachbatch,7,ok,36000,0,0,10.527692317962646,0,0.389,2.151,7.669,0,,,29,13.913,369028b
+20261016T100754Z_C_bursty_driver_failure_foreachbatch_t08,C (3.3 s),bursty,driver_failure,foreachbatch,8,ok,36000,0,0,14.046956539154053,0,1.579,2.116,6.351,0,,,39,14.499,369028b
+20261016T101036Z_C_bursty_driver_failure_foreachbatch_t09,C (3.3 s),bursty,driver_failure,foreachbatch,9,ok,36000,0,0,14.545731544494629,0,2.225,2.546,12.402,0,,,24,11.866,369028b
+20261016T101238Z_C_bursty_driver_failure_foreachbatch_t00,C (5.8 s),bursty,driver_failure,foreachbatch,0,ok,36000,0,0,14.527153968811035,0,4.8,3.938,14.228,0,,,16,7.282,369028b
+20261016T101450Z_C_bursty_driver_failure_foreachbatch_t01,C (5.8 s),bursty,driver_failure,foreachbatch,1,ok,36000,0,0,14.536757707595825,0,3.182,4.008,12.006,0,,,18,7.471,369028b
+20261016T101716Z_C_bursty_driver_failure_foreachbatch_t02,C (5.8 s),bursty,driver_failure,foreachbatch,2,ok,36000,0,0,13.539978265762329,0,3.495,3.668,9.499,0,,,16,7.279,369028b
+20261016T101928Z_C_bursty_driver_failure_foreachbatch_t03,C (5.8 s),bursty,driver_failure,foreachbatch,3,ok,36000,0,0,14.04809045791626,0,3.421,3.632,9.389,0,,,13,7.061,369028b
+20261016T102119Z_C_bursty_driver_failure_foreachbatch_t04,C (5.8 s),bursty,driver_failure,foreachbatch,4,ok,36000,0,0,15.039403676986694,0,4.458,3.986,11.837,0,,,21,8.118,369028b
+20261016T102355Z_C_bursty_driver_failure_foreachbatch_t05,C (5.8 s),bursty,driver_failure,foreachbatch,5,ok,36000,0,0,14.545729398727417,0,5.427,6.567,16.089,0,,,10,6.518,369028b
+20261016T102528Z_C_bursty_driver_failure_foreachbatch_t06,C (5.8 s),bursty,driver_failure,foreachbatch,6,ok,36000,0,0,15.546432256698608,0,0.83,4.601,13.577,0,,,19,7.906,369028b
+20261016T102753Z_C_bursty_driver_failure_foreachbatch_t07,C (5.8 s),bursty,driver_failure,foreachbatch,7,ok,36000,1739,0,14.030129194259644,1739,5.796,3.837,11.525,0,,,17,7.668,369028b
+20261016T103007Z_C_bursty_driver_failure_foreachbatch_t08,C (5.8 s),bursty,driver_failure,foreachbatch,8,ok,36000,0,0,13.538312911987305,0,1.437,3.484,8.376,0,,,23,8.267,369028b
+20261016T103255Z_C_bursty_driver_failure_foreachbatch_t09,C (5.8 s),bursty,driver_failure,foreachbatch,9,ok,36000,0,0,14.04205322265625,0,1.705,4.135,12.089,0,,,17,8.039,369028b

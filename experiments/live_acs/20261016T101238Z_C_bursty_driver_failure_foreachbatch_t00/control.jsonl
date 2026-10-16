@@ -1,0 +1,3 @@
+{"t": 1792145568.8715925, "type": "query_start", "trigger": "5800 milliseconds", "interval_s": null, "controller": "fixed", "acs_variant": null, "resumed_after_crash": false, "run_id": "656f5e65-4640-4c5d-9683-bd6698514a9c"}
+{"t": 1792145599.2070336, "type": "query_start", "trigger": "5800 milliseconds", "interval_s": null, "controller": "fixed", "acs_variant": null, "resumed_after_crash": true, "run_id": "4c39dff2-b291-4bda-ae40-59561e82c515"}
+{"t": 1792145689.4781215, "type": "query_stop", "interval_s": null}

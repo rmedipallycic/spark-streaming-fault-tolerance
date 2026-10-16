@@ -1,0 +1,292 @@
+{
+  "run_id": "20261015T235348Z_A_bursty_driver_failure_foreachbatch_t02",
+  "run_type": "measured",
+  "config": {
+    "strategy": "A",
+    "fixed_s": 10.0,
+    "schedule": "10:30,2:30,10:30,2:30,10:30",
+    "acs_variant": "v1",
+    "workload": "bursty",
+    "segment_s": 15.0,
+    "workload_seed": null,
+    "kill_span_s": 30.0,
+    "experiment": "live_acs",
+    "failure": "driver_failure",
+    "sink": "foreachbatch",
+    "trial": 2,
+    "run_type": "measured",
+    "source": "kafka",
+    "broker": "localhost:9092",
+    "partitions": 4,
+    "records": 36000,
+    "rate": 300.0,
+    "kill_after": 15.0,
+    "settle": null,
+    "timeout": 600.0,
+    "out_root": null
+  },
+  "controller": "fixed",
+  "trigger": "1 second",
+  "settle_s": 17.0,
+  "workload_schedule": [
+    [
+      0.0,
+      150.0
+    ],
+    [
+      15.0,
+      150.0
+    ],
+    [
+      30.0,
+      150.0
+    ],
+    [
+      45.0,
+      300.0
+    ],
+    [
+      60.0,
+      150.0
+    ],
+    [
+      75.0,
+      900.0
+    ],
+    [
+      90.0,
+      900.0
+    ],
+    [
+      105.0,
+      300.0
+    ],
+    [
+      120.0,
+      300.0
+    ],
+    [
+      135.0,
+      900.0
+    ],
+    [
+      150.0,
+      150.0
+    ],
+    [
+      165.0,
+      900.0
+    ],
+    [
+      180.0,
+      150.0
+    ],
+    [
+      195.0,
+      900.0
+    ],
+    [
+      210.0,
+      900.0
+    ],
+    [
+      225.0,
+      150.0
+    ],
+    [
+      240.0,
+      300.0
+    ],
+    [
+      255.0,
+      900.0
+    ],
+    [
+      270.0,
+      300.0
+    ],
+    [
+      285.0,
+      900.0
+    ],
+    [
+      300.0,
+      900.0
+    ],
+    [
+      315.0,
+      300.0
+    ],
+    [
+      330.0,
+      900.0
+    ],
+    [
+      345.0,
+      300.0
+    ],
+    [
+      360.0,
+      900.0
+    ],
+    [
+      375.0,
+      300.0
+    ],
+    [
+      390.0,
+      150.0
+    ],
+    [
+      405.0,
+      150.0
+    ],
+    [
+      420.0,
+      300.0
+    ],
+    [
+      435.0,
+      300.0
+    ],
+    [
+      450.0,
+      300.0
+    ],
+    [
+      465.0,
+      300.0
+    ],
+    [
+      480.0,
+      300.0
+    ],
+    [
+      495.0,
+      900.0
+    ],
+    [
+      510.0,
+      150.0
+    ],
+    [
+      525.0,
+      900.0
+    ],
+    [
+      540.0,
+      150.0
+    ],
+    [
+      555.0,
+      150.0
+    ],
+    [
+      570.0,
+      150.0
+    ],
+    [
+      585.0,
+      150.0
+    ]
+  ],
+  "environment": {
+    "git_commit": "369028b2259149689a81cd2a355b349fcfe159a2",
+    "git_dirty": false,
+    "argv": [
+      "live/run_trial.py",
+      "--strategy",
+      "A",
+      "--workload",
+      "bursty",
+      "--failure",
+      "driver_failure",
+      "--sink",
+      "foreachbatch",
+      "--trial",
+      "2",
+      "--kill-span-s",
+      "30",
+      "--experiment",
+      "live_acs"
+    ],
+    "pyspark": "3.5.3",
+    "confluent_kafka": "2.3.0",
+    "java": [
+      "openjdk version \"17.0.20.1\" 2026-08-18",
+      "OpenJDK Runtime Environment (build 17.0.20.1+1-1-26.04-Ubuntu)"
+    ],
+    "python": "3.11.17 (main, Oct 14 2026, 01:05:33) [Clang 23.1.3 ]",
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "cpu_count": 12,
+    "free_disk_gb": {
+      "/tmp": 4.08,
+      "/home/rmedipally": 1022.89
+    },
+    "started_utc": "2026-10-15T23:53:48.378404+00:00"
+  },
+  "events": {
+    "job_start_1": 1792108428.5294583,
+    "producer_start": 1792108428.529507,
+    "first_output": 1792108438.542728,
+    "kill_delay_s": 22.082039322,
+    "committed_before_failure": 4721,
+    "kill": 1792108460.6425872,
+    "job_start_2": 1792108460.6725898,
+    "first_commit_after_restart": 1792108470.6848822,
+    "recovery_latency_s": 10.042294979095459,
+    "producer_done_s": 1792108528.532007,
+    "settled": 1792108548.062079,
+    "job_end": 1792108549.0631144,
+    "final_exit_code": 0
+  },
+  "outcome": "ok",
+  "at_kill": {
+    "last_planned_batch": 23,
+    "last_committed_batch": 23,
+    "uncommitted_batches": 0,
+    "seconds_since_last_commit": 0.46,
+    "replay_records": 0
+  },
+  "produced_acked": 36000,
+  "producer_errors": 0,
+  "committed": {
+    "rows": 36000,
+    "distinct": 36000,
+    "duplicate_rows": 0,
+    "duplicated_records": 0,
+    "missing_records": 0,
+    "unexpected_records": 0,
+    "duplicated_seqs": [],
+    "missing_seqs": []
+  },
+  "raw_files": {
+    "rows": 36000,
+    "distinct": 36000,
+    "duplicate_rows": 0,
+    "duplicated_records": 0,
+    "missing_records": 0,
+    "unexpected_records": 0,
+    "duplicated_seqs": [],
+    "missing_seqs": []
+  },
+  "n_committed_files": 85,
+  "n_raw_files": 85,
+  "n_batch_commits": 85,
+  "latency": {
+    "n": 36000,
+    "p50_s": 0.709,
+    "p95_s": 4.005,
+    "p99_s": 8.805,
+    "max_s": 10.158
+  },
+  "commits_per_min": 42.312,
+  "control": {
+    "switches": 0,
+    "switch_downtimes_s": [],
+    "median_switch_downtime_s": null,
+    "intervals_s": [],
+    "query_starts": 2,
+    "time_weighted_interval_s": null
+  }
+}
