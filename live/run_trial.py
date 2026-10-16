@@ -436,7 +436,8 @@ def main():
     seed = a.trial if a.workload_seed is None else a.workload_seed
     schedule = rate_schedule(a.workload, a.rate, a.segment_s, seed)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    label = f"ACS{a.acs_variant}" if a.strategy == "ACS" else a.strategy
+    label = (f"ACS{a.acs_variant}" if a.strategy == "ACS"
+             else f"C{a.fixed_s:g}" if a.strategy == "C" else a.strategy)
     run_id = f"{stamp}_{label}_{a.workload}_{a.failure}_{a.sink}_t{a.trial:02d}"
     root = a.out_root or os.path.join(REPO, "experiments", a.experiment if a.run_type == "measured" else "live_smoke")
     out = os.path.join(root, run_id)
