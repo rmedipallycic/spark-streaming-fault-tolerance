@@ -56,7 +56,8 @@ def main():
             "latency_p50_s": lat.get("p50_s"), "latency_p95_s": lat.get("p95_s"),
             "switches": ctl.get("switches"), "median_switch_downtime_s": ctl.get("median_switch_downtime_s"),
             "time_weighted_interval_s": ctl.get("time_weighted_interval_s"),
-            "commits_per_min": r.get("commits_per_min"),
+            "batch_commits": r.get("n_batch_commits"),
+            "commits_per_min_whole_run": r.get("commits_per_min"),
             "git_commit": (r["environment"].get("git_commit") or "")[:7],
         })
     if not rows:
@@ -70,10 +71,13 @@ def main():
     for t in rows:
         groups[(t["workload"], t["failure"], t["sink"], t["strategy"])].append(t)
     lines = ["Median (min-max) over trials. Replay: records in batches planned but not committed "
-             "when the job was killed. Latency: producer send to output file write.", "",
+             "when the job was killed. Latency: producer send to output file write. Batch commits: "
+             "total micro-batches committed in the trial (same 36,000 records in every trial), the "
+             "checkpoint overhead measure; commits per minute is kept in summary.csv only, because "
+             "the end-of-trial wait differs by strategy.", "",
              "| Workload | Failure | Sink | Strategy | Trials | Outcomes | Trials with duplicates | "
              "Replay records | Recovery s | Latency p50 s | Latency p95 s | Mean interval s | "
-             "Switches | Switch downtime s | Commits/min |",
+             "Switches | Switch downtime s | Batch commits |",
              "|" + "---|" * 15]
     for (wl, fl, sk, st), ts in sorted(groups.items()):
         outs = defaultdict(int)
@@ -87,7 +91,7 @@ def main():
             f"{med(g('replay_records'), '{:.0f}')} | {med(g('recovery_latency_s'))} | "
             f"{med(g('latency_p50_s'), '{:.2f}')} | {med(g('latency_p95_s'), '{:.2f}')} | "
             f"{med(g('time_weighted_interval_s'))} | {med(g('switches'), '{:.0f}')} | "
-            f"{med(g('median_switch_downtime_s'), '{:.2f}')} | {med(g('commits_per_min'))} |")
+            f"{med(g('median_switch_downtime_s'), '{:.2f}')} | {med(g('batch_commits'), '{:.0f}')} |")
     commits = sorted({t["git_commit"] for t in rows})
     lines += ["", f"{len(rows)} measured trials, code commit(s) {', '.join(commits)}."]
     with open(os.path.join(a.root, "summary.md"), "w", encoding="utf-8") as f:
