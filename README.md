@@ -6,7 +6,7 @@
 
 ---
 
-## Project Status (read first)
+## Project Status
 
 This repository contains two kinds of results, kept strictly apart:
 
