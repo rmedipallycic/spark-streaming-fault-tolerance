@@ -1,0 +1,83 @@
+\begin{thebibliography}{10}
+
+\bibitem{armbrust2018structured}
+Michael Armbrust, Tathagata Das, Joseph Torres, Burak Yavuz, Shixiong Zhu,
+  Reynold Xin, Ali Ghodsi, Ion Stoica, and Matei Zaharia.
+\newblock Structured streaming: A declarative {API} for real-time applications
+  in {Apache Spark}.
+\newblock In {\em Proceedings of the 2018 International Conference on
+  Management of Data (SIGMOD)}, pages 601--613, 2018.
+
+\bibitem{carbone2017state}
+Paris Carbone, Stephan Ewen, Gyula F\'ora, Seif Haridi, Stefan Richter, and
+  Kostas Tzoumas.
+\newblock State management in {Apache Flink}: Consistent stateful distributed
+  stream processing.
+\newblock {\em Proceedings of the VLDB Endowment}, 10(12):1718--1729, 2017.
+
+\bibitem{carbone2015lightweight}
+Paris Carbone, Gyula F\'ora, Stephan Ewen, Seif Haridi, and Kostas Tzoumas.
+\newblock Lightweight asynchronous snapshots for distributed dataflows, 2015.
+\newblock arXiv:1506.08603.
+
+\bibitem{chandy1985snapshots}
+K.~Mani Chandy and Leslie Lamport.
+\newblock Distributed snapshots: Determining global states of distributed
+  systems.
+\newblock {\em ACM Transactions on Computer Systems}, 3(1):63--75, 1985.
+
+\bibitem{daly2006higher}
+J.~T. Daly.
+\newblock A higher order estimate of the optimum checkpoint interval for
+  restart dumps.
+\newblock {\em Future Generation Computer Systems}, 22(3):303--312, 2006.
+
+\bibitem{das2014adaptive}
+Tathagata Das, Yuan Zhong, Ion Stoica, and Scott Shenker.
+\newblock Adaptive stream processing using dynamic batch sizing.
+\newblock In {\em Proceedings of the ACM Symposium on Cloud Computing (SoCC)},
+  2014.
+
+\bibitem{elnozahy2002survey}
+E.~N. Elnozahy, Lorenzo Alvisi, Yi-Min Wang, and David~B. Johnson.
+\newblock A survey of rollback-recovery protocols in message-passing systems.
+\newblock {\em ACM Computing Surveys}, 34(3):375--408, 2002.
+
+\bibitem{kreps2011kafka}
+Jay Kreps, Neha Narkhede, and Jun Rao.
+\newblock Kafka: a distributed messaging system for log processing.
+\newblock In {\em Proceedings of the NetDB Workshop}, 2011.
+
+\bibitem{medipally2026llm}
+Rajshekar Medipally.
+\newblock What does a streaming client see when an {LLM} server crashes? a
+  fault-injection study of client-visible token anomalies in {vLLM} and
+  {SGLang}, 2026.
+\newblock Preprint, doi:10.5281/zenodo.23377448.
+
+\bibitem{sparkguide}
+{The Apache Software Foundation}.
+\newblock Structured streaming programming guide (apache spark 3.5), 2024.
+\newblock
+  \url{https://spark.apache.org/docs/3.5.3/structured-streaming-programming-guide.html}.
+
+\bibitem{venkataraman2017drizzle}
+Shivaram Venkataraman, Aurojit Panda, Kay Ousterhout, Michael Armbrust, Ali
+  Ghodsi, Michael~J. Franklin, Benjamin Recht, and Ion Stoica.
+\newblock Drizzle: Fast and adaptable stream processing at scale.
+\newblock In {\em Proceedings of the 26th Symposium on Operating Systems
+  Principles (SOSP)}, 2017.
+
+\bibitem{young1974first}
+John~W. Young.
+\newblock A first order approximation to the optimum checkpoint interval.
+\newblock {\em Communications of the ACM}, 17(9):530--531, 1974.
+
+\bibitem{zaharia2013discretized}
+Matei Zaharia, Tathagata Das, Haoyuan Li, Timothy Hunter, Scott Shenker, and
+  Ion Stoica.
+\newblock Discretized streams: Fault-tolerant streaming computation at scale.
+\newblock In {\em Proceedings of the 24th ACM Symposium on Operating Systems
+  Principles (SOSP)}, 2013.
+
+\end{thebibliography}
