@@ -306,18 +306,25 @@ spark-streaming-fault-tolerance/
 - [x] Comparison with fixed intervals (A, B, and C at ACS's mean) under the same workloads and kill times, including the cost of switches
 - *Done when:* paired comparison with committed records. **Done (126 trials, October 15-17, 2026).**
 
-**Phase 4 — Strategy C, Flink, more failure types**
-- [ ] RocksDB changelog checkpointing (called Strategy C in the original plan; in the ACS study, C denotes a fixed interval at ACS's mean)
-- [ ] Flink runner (`src/flink_pipeline.py`) under the same failure scenarios
-- [ ] Additional failure types: container kills, network loss (tc netem)
+**Phase 4 — Scale-out (next; becomes paper v2)**
+- [ ] Spark cluster (1 master, 2 workers), Kafka on its own node, checkpoint on shared storage (HDFS)
+- [ ] Same strategies (A, B, C at ACS's mean, ACS v1 and v2), paired trials, interleaved
+- [ ] New failure type: executor kill on a worker (not possible in local mode)
+- [ ] Optional: network loss between a worker and Kafka (`tc netem`)
 
-**Phase 5 — Scale-out**
-- [ ] Multi-node cluster experiments
-- [ ] S3 multi-region checkpoint study (see `docs/future_work.md`)
+**Phase 5 — Flink (separate paper)**
+- [ ] Flink runner (`src/flink_pipeline.py`) under the same failures and workloads
+- [ ] Question: does adaptive checkpointing pay where the checkpoint interval is separate from processing?
 
-**Phase 6 — Paper**
-- [x] Version 1 from Phases 1–3 ([`paper/main.pdf`](paper/main.pdf))
-- [ ] Version 2 adding the multi-node cluster study (Phase 5)
+**Phase 6 — Papers**
+- [x] Paper 1, v1: Phases 1–3 ([`paper/main.pdf`](paper/main.pdf))
+- [ ] Paper 1, v2: adds the cluster study (Phase 4)
+- [ ] Paper 2: Spark versus Flink (Phase 5)
+
+**Later ideas**
+- RocksDB changelog checkpointing (needs a stateful workload; called Strategy C in the original plan, while C in the ACS study denotes a fixed interval at ACS's mean)
+- S3 multi-region checkpoint study (see `docs/future_work.md`)
+- Additional failure types: container kills
 
 ---
 
