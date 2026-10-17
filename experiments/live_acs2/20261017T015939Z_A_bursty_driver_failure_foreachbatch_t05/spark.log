@@ -1,0 +1,108 @@
+
+=== start 1792202379.462860
+Picked up JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=/home/rmedipally/live-ft-work/20261017T015939Z_A_bursty_driver_failure_foreachbatch_t05/tmp
+Picked up JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=/home/rmedipally/live-ft-work/20261017T015939Z_A_bursty_driver_failure_foreachbatch_t05/tmp
+26/10/16 21:59:40 WARN Utils: Your hostname, Raj resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/10/16 21:59:40 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+:: loading settings :: url = jar:file:/home/rmedipally/venv-live/lib/python3.11/site-packages/pyspark/jars/ivy-2.5.1.jar!/org/apache/ivy/core/settings/ivysettings.xml
+Ivy Default Cache set to: /home/rmedipally/.ivy2/cache
+The jars for the packages stored in: /home/rmedipally/.ivy2/jars
+org.apache.spark#spark-sql-kafka-0-10_2.12 added as a dependency
+:: resolving dependencies :: org.apache.spark#spark-submit-parent-d765b6c8-c70e-47d6-a5a2-b03373421b34;1.0
+	confs: [default]
+	found org.apache.spark#spark-sql-kafka-0-10_2.12;3.5.3 in central
+	found org.apache.spark#spark-token-provider-kafka-0-10_2.12;3.5.3 in central
+	found org.apache.kafka#kafka-clients;3.4.1 in central
+	found org.lz4#lz4-java;1.8.0 in central
+	found org.xerial.snappy#snappy-java;1.1.10.5 in central
+	found org.slf4j#slf4j-api;2.0.7 in central
+	found org.apache.hadoop#hadoop-client-runtime;3.3.4 in central
+	found org.apache.hadoop#hadoop-client-api;3.3.4 in central
+	found commons-logging#commons-logging;1.1.3 in central
+	found com.google.code.findbugs#jsr305;3.0.0 in central
+	found org.apache.commons#commons-pool2;2.11.1 in central
+:: resolution report :: resolve 756ms :: artifacts dl 43ms
+	:: modules in use:
+	com.google.code.findbugs#jsr305;3.0.0 from central in [default]
+	commons-logging#commons-logging;1.1.3 from central in [default]
+	org.apache.commons#commons-pool2;2.11.1 from central in [default]
+	org.apache.hadoop#hadoop-client-api;3.3.4 from central in [default]
+	org.apache.hadoop#hadoop-client-runtime;3.3.4 from central in [default]
+	org.apache.kafka#kafka-clients;3.4.1 from central in [default]
+	org.apache.spark#spark-sql-kafka-0-10_2.12;3.5.3 from central in [default]
+	org.apache.spark#spark-token-provider-kafka-0-10_2.12;3.5.3 from central in [default]
+	org.lz4#lz4-java;1.8.0 from central in [default]
+	org.slf4j#slf4j-api;2.0.7 from central in [default]
+	org.xerial.snappy#snappy-java;1.1.10.5 from central in [default]
+	---------------------------------------------------------------------
+	|                  |            modules            ||   artifacts   |
+	|       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+	---------------------------------------------------------------------
+	|      default     |   11  |   0   |   0   |   0   ||   11  |   0   |
+	---------------------------------------------------------------------
+:: retrieving :: org.apache.spark#spark-submit-parent-d765b6c8-c70e-47d6-a5a2-b03373421b34
+	confs: [default]
+	0 artifacts copied, 11 already retrieved (0kB/23ms)
+26/10/16 21:59:42 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/10/16 21:59:46 WARN ResolveWriteToStream: spark.sql.adaptive.enabled is not supported in streaming DataFrames/Datasets and will be disabled.
+STREAM_STARTED 1792202386.398744
+26/10/16 21:59:46 WARN AdminClientConfig: These configurations '[key.deserializer, value.deserializer, enable.auto.commit, max.poll.records, auto.offset.reset]' were supplied but are not used yet.
+[Stage 0:>                                                          (0 + 2) / 4][Stage 0:=============================>                             (2 + 2) / 4][Stage 0:============================================>              (3 + 1) / 4]                                                                                26/10/16 21:59:50 WARN ProcessingTimeExecutor: Current batch is falling behind. The trigger interval is 1000 milliseconds, but spent 3932 milliseconds
+
+=== SIGKILL 1792202408.250955
+
+=== start 1792202408.274861
+Picked up JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=/home/rmedipally/live-ft-work/20261017T015939Z_A_bursty_driver_failure_foreachbatch_t05/tmp
+Picked up JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=/home/rmedipally/live-ft-work/20261017T015939Z_A_bursty_driver_failure_foreachbatch_t05/tmp
+26/10/16 22:00:09 WARN Utils: Your hostname, Raj resolves to a loopback address: 127.0.1.1; using 10.255.255.254 instead (on interface lo)
+26/10/16 22:00:09 WARN Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+:: loading settings :: url = jar:file:/home/rmedipally/venv-live/lib/python3.11/site-packages/pyspark/jars/ivy-2.5.1.jar!/org/apache/ivy/core/settings/ivysettings.xml
+Ivy Default Cache set to: /home/rmedipally/.ivy2/cache
+The jars for the packages stored in: /home/rmedipally/.ivy2/jars
+org.apache.spark#spark-sql-kafka-0-10_2.12 added as a dependency
+:: resolving dependencies :: org.apache.spark#spark-submit-parent-22f94034-11cc-4095-a362-fabc8421c4ad;1.0
+	confs: [default]
+	found org.apache.spark#spark-sql-kafka-0-10_2.12;3.5.3 in central
+	found org.apache.spark#spark-token-provider-kafka-0-10_2.12;3.5.3 in central
+	found org.apache.kafka#kafka-clients;3.4.1 in central
+	found org.lz4#lz4-java;1.8.0 in central
+	found org.xerial.snappy#snappy-java;1.1.10.5 in central
+	found org.slf4j#slf4j-api;2.0.7 in central
+	found org.apache.hadoop#hadoop-client-runtime;3.3.4 in central
+	found org.apache.hadoop#hadoop-client-api;3.3.4 in central
+	found commons-logging#commons-logging;1.1.3 in central
+	found com.google.code.findbugs#jsr305;3.0.0 in central
+	found org.apache.commons#commons-pool2;2.11.1 in central
+:: resolution report :: resolve 771ms :: artifacts dl 30ms
+	:: modules in use:
+	com.google.code.findbugs#jsr305;3.0.0 from central in [default]
+	commons-logging#commons-logging;1.1.3 from central in [default]
+	org.apache.commons#commons-pool2;2.11.1 from central in [default]
+	org.apache.hadoop#hadoop-client-api;3.3.4 from central in [default]
+	org.apache.hadoop#hadoop-client-runtime;3.3.4 from central in [default]
+	org.apache.kafka#kafka-clients;3.4.1 from central in [default]
+	org.apache.spark#spark-sql-kafka-0-10_2.12;3.5.3 from central in [default]
+	org.apache.spark#spark-token-provider-kafka-0-10_2.12;3.5.3 from central in [default]
+	org.lz4#lz4-java;1.8.0 from central in [default]
+	org.slf4j#slf4j-api;2.0.7 from central in [default]
+	org.xerial.snappy#snappy-java;1.1.10.5 from central in [default]
+	---------------------------------------------------------------------
+	|                  |            modules            ||   artifacts   |
+	|       conf       | number| search|dwnlded|evicted|| number|dwnlded|
+	---------------------------------------------------------------------
+	|      default     |   11  |   0   |   0   |   0   ||   11  |   0   |
+	---------------------------------------------------------------------
+:: retrieving :: org.apache.spark#spark-submit-parent-22f94034-11cc-4095-a362-fabc8421c4ad
+	confs: [default]
+	0 artifacts copied, 11 already retrieved (0kB/20ms)
+26/10/16 22:00:11 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+26/10/16 22:00:15 WARN ResolveWriteToStream: spark.sql.adaptive.enabled is not supported in streaming DataFrames/Datasets and will be disabled.
+STREAM_STARTED 1792202415.772068
+26/10/16 22:00:16 WARN AdminClientConfig: These configurations '[key.deserializer, value.deserializer, enable.auto.commit, max.poll.records, auto.offset.reset]' were supplied but are not used yet.
+[Stage 0:>                                                          (0 + 2) / 4][Stage 0:=============================>                             (2 + 2) / 4]                                                                                26/10/16 22:00:19 WARN ProcessingTimeExecutor: Current batch is falling behind. The trigger interval is 1000 milliseconds, but spent 3727 milliseconds
+[Stage 22:=============================>                            (2 + 2) / 4]                                                                                26/10/16 22:00:41 WARN ProcessingTimeExecutor: Current batch is falling behind. The trigger interval is 1000 milliseconds, but spent 1215 milliseconds
+STREAM_STOPPED 1792202459.390355

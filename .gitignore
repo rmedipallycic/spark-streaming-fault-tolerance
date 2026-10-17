@@ -219,3 +219,4 @@ __marimo__/
 .streamlit/secrets.toml
 experiments/live_smoke/
 !experiments/live_acs/**/spark.log
+!experiments/live_acs2/**/spark.log
