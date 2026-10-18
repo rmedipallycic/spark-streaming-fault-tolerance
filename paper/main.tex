@@ -9,9 +9,9 @@
 \usepackage{hyperref}
 \usepackage{fancyhdr}
 \hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black,
-  pdftitle={Does Adaptive Checkpointing Help Spark Structured Streaming? A Fault-Injection Study of Replay, Recovery and Latency},
+  pdftitle={Does Adaptive Micro-Batch Triggering Help Spark Structured Streaming? A Fault-Injection Study of Replay, Recovery and Latency},
   pdfauthor={Rajshekar Medipally},
-  pdfkeywords={stream processing, fault tolerance, checkpointing, Apache Spark, Structured Streaming, fault injection, negative result}}
+  pdfkeywords={stream processing, fault tolerance, micro-batch trigger, checkpointing, Apache Spark, Structured Streaming, fault injection, negative result}}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -27,12 +27,13 @@
 \def\RunTwoRows{\@@input tables/acs_run2.tex }
 \def\BothRows{\@@input tables/acs_both.tex }
 \def\PairRows{\@@input tables/paired.tex }
+\def\DiffRows{\@@input tables/paired_diff.tex }
 \def\ReplayRows{\@@input tables/replay.tex }
 \def\SplitRows{\@@input tables/recovery_split.tex }
 \def\StallRows{\@@input tables/stalls.tex }
 \makeatother
 
-\title{Does Adaptive Checkpointing Help Spark Structured Streaming?\\
+\title{Does Adaptive Micro-Batch Triggering Help\\ Spark Structured Streaming?\\
 \large A Fault-Injection Study of Replay, Recovery and Latency}
 \author{Rajshekar Medipally\\
 \small Independent researcher\\
@@ -46,26 +47,30 @@
 \begin{abstract}
 Checkpoint-interval tuning is usually framed as a trade-off between overhead
 in normal operation and work lost on failure, and adaptive controllers aim to
-shorten the interval when failures look likely. We tested whether that framing
-holds for Spark Structured Streaming, where the micro-batch trigger interval
-also sets how often the offset and commit logs are written. We built a
-fault-injection harness that SIGKILLs a Spark job reading sequence-numbered
-records from Kafka, restarts it from its checkpoint, and counts every
-duplicated or missing record, and implemented an adaptive controller (ACS)
-that changes the trigger at runtime by restarting the query between batches.
-Over \AllTrials{} measured trials on one machine, a crash caused a batch to be
-reprocessed in only \ReplayEvents{} of \CleanTrials{} comparison trials, because
+checkpoint more often when failures look likely. Spark Structured Streaming has
+no separate checkpoint interval: its processing-time trigger schedules
+micro-batches, and the offset and commit logs that recovery relies on are
+written once per batch. We therefore studied adaptive \emph{trigger} control
+and asked whether the classic framing carries over. We built a fault-injection
+harness that SIGKILLs a Spark job reading sequence-numbered records from Kafka,
+restarts it from its checkpoint, and counts every duplicated or missing record,
+and implemented a controller (ACS) that changes the trigger at runtime by
+restarting the query between batches. Over \AllTrials{} measured trials on one
+machine with a light, low-rate workload, a crash caused a batch to be
+reprocessed in \ReplayEvents{} of \CleanTrials{} comparison trials, because
 records that arrive between batches are read for the first time after a
-restart, not replayed; recovery took about 10\,s whatever the interval and was
-dominated by restart. The interval therefore traded end-to-end latency against
-checkpoint overhead, not against lost work. Interval switches were cheap (median
-\SwitchMed\,s) and safe (no duplicates in \Switches{} switches), but on paired,
-identical workloads and failures a fixed interval chosen at ACS's own mean
-matched or beat it: against a fixed 5.8\,s interval, the original ACS rule had
-the lower 95th-percentile latency in \PairPninetyfiveAcsOneTwo{} pairs and
-fewer commits in only \PairCommitsAcsOneTwo. The original rule also cannot react
-to any single signal. We report the negative result, its mechanism, and two
-measurement pitfalls we hit along the way: an earlier simulation that predicted
+restart, not replayed; when it did happen, the replay was the interrupted batch
+and reached 15{,}750 records. Recovery took about 10\,s, with no systematic
+relationship to the interval, and was dominated by restart. In this setting the interval traded end-to-end
+latency against batch-commit count rather than against lost work. Interval
+switches were cheap (median \SwitchMed\,s), and no duplicates were observed in
+the \Switches{} tested switches. On pairs with matched workload seeds and kill delays, a
+fixed interval set to ACS's own mean matched or beat it: against a fixed
+5.8\,s interval, the original ACS rule had the lower 95th-percentile latency in
+\PairPninetyfiveAcsOneTwo{} pairs and fewer commits in \PairCommitsAcsOneTwo.
+Failure-risk-driven adaptation thus showed no measurable benefit under the
+tested workload; we do not claim the same for heavily loaded or stateful jobs.
+We also report two measurement pitfalls: an earlier simulation that predicted
 the wrong failure behaviour, and laptop standby that silently paused six
 trials, which we detected from the producer's clock.
 \end{abstract}
@@ -83,20 +88,27 @@ that framing.
 We set out to build and evaluate such a policy for Spark Structured Streaming
 \cite{armbrust2018structured}. An earlier simulation of the policy, Adaptive
 Checkpoint Selection (ACS), suggested large reductions in duplicated records.
+We keep the name for continuity, but what ACS controls in Spark is the
+processing-time trigger of the micro-batches, not an independent checkpoint or
+state-snapshot interval: offset and commit metadata are persisted once per
+batch, so the trigger sets their frequency. Our study is therefore one of
+adaptive micro-batch trigger control, and it does not address asynchronous
+checkpointing or state-store snapshot policies.
 When we audited that simulation, we found that its advantage followed from how
 the model was written, and we replaced it with live measurements on real Spark.
 This paper reports what those measurements showed.
 
-The answer was negative, for a reason that is specific to micro-batch execution
-and easy to miss. In Structured Streaming the processing-time trigger sets both
-how often a batch runs and how often progress is written to the checkpoint.
+The answer was negative for the workload we tested, for a reason that is
+specific to micro-batch execution and easy to miss. In Structured Streaming the
+processing-time trigger sets how often a batch runs, and with it how often
+offset and commit entries are written.
 Records that arrive between two triggers are not lost or replayed when the
 driver dies: they are simply read for the first time by the restarted query.
 Only a batch that is \emph{running} at the moment of the crash is redone. Longer
 intervals therefore do not mean more lost work in the usual sense; they mean
-higher latency, because records wait longer for the next batch. The interval is
-a latency-versus-overhead knob, and a well-chosen fixed value served that
-trade-off as well as adaptive control did.
+higher latency, because records wait longer for the next batch. In our setting
+the interval acted as a knob between latency and batch-commit count, and a
+well-chosen fixed value served that trade-off as well as adaptive control did.
 
 \paragraph{Contributions.}
 \begin{enumerate}
@@ -107,12 +119,14 @@ records the code commit and environment of every trial.
 \item A measured account of delivery under driver failure and checkpoint
 corruption for the exactly-once file sink and an at-least-once foreachBatch
 sink (\SOneTrials{} trials).
-\item A live, restart-based implementation of adaptive trigger control, with
-its switching cost, and an analysis showing that the original ACS rule cannot
-react to any single signal.
+\item A live, restart-based implementation of adaptive micro-batch trigger
+control, with its switching cost, and an analysis showing that the original ACS
+rule cannot react to any single signal.
 \item A paired comparison of ACS against fixed intervals, including fixed
 intervals set to ACS's own mean, in two runs (\ACSTrialsOne{} and
-\ACSTrialsTwo{} trials), showing no advantage for adaptation and explaining why.
+\ACSTrialsTwo{} trials), with paired differences and confidence intervals,
+showing no measurable advantage for adaptation under the tested workload, and a
+simple model of why.
 \item Two methodology lessons: simulated failure behaviour that differed from
 the measured behaviour in kind, and a clock-based test that detected trials
 paused by laptop standby.
@@ -139,11 +153,15 @@ which lists the files that belong to each committed batch. A
 \texttt{foreachBatch} sink hands each batch to user code; if that code is not
 idempotent, a batch that is run again is written again (at-least-once).
 
-\paragraph{What the interval controls.}
-Because offsets and commits are written once per batch, the trigger interval is
-also the checkpoint interval. Section~\ref{sec:mechanism} shows why, unlike in
-the classic model, a longer interval does not proportionally increase the work
-redone after a crash.
+\paragraph{What the trigger controls.}
+The trigger schedules micro-batches; it is not a checkpoint interval in the
+sense of an independently configurable periodic snapshot. Because offset and
+commit entries are written once per batch, however, the trigger determines how
+often they are written, and that is the quantity this paper varies. (Stateful
+queries also write state-store files per batch, with snapshot frequency set
+separately; our queries are stateless.) Section~\ref{sec:mechanism} shows why,
+unlike in the classic model, a longer interval does not proportionally increase
+the work redone after a crash.
 
 \section{Harness and setup}
 \label{sec:harness}
@@ -162,20 +180,29 @@ package versions, event timestamps and counts, plus the Spark log, the
 controller log and a checkpoint snapshot taken before the restart.
 
 \paragraph{Failures.}
-\emph{Driver kill}: SIGKILL of the Spark process group (in local mode, driver
-and executors are one JVM), then restart. \emph{Offset-log corruption}: the same
+\emph{Driver kill:} SIGKILL of the Spark process group (in local mode, driver
+and executors are one JVM), then restart. \emph{Offset-log corruption:} the same
 kill, then random bytes written over the middle of the latest file in
 \texttt{offsets/}, then restart.
 
 \paragraph{Metrics.}
-\emph{Recovery}: time from the kill to the first new entry in \texttt{commits/}
-after the restart. \emph{Replay}: records in batches that had an offsets entry
+\emph{Recovery:} time from the kill to the first new entry in \texttt{commits/}
+after the restart. \emph{Replay:} records in batches that had an offsets entry
 but no commit at the kill, read from the checkpoint before the restart.
-\emph{End-to-end latency}: per record, the modification time of the first output
-file containing it minus the producer's send time; we report each trial's
-median (p50) and 95th percentile (p95). \emph{Batch commits}: the number of
-committed micro-batches in the trial, our measure of checkpoint overhead (every
-trial processes the same 36{,}000 records).
+\emph{End-to-end latency:} per record, the modification time of the first
+committed output file containing it minus the producer's send timestamp, which
+the producer writes into the record; we report each trial's median (p50) and
+95th percentile (p95). This approximates end-to-end latency: a file's
+modification time marks when its last write finished, which can differ slightly
+from when a downstream reader would see it. Producer, Spark and file system run
+on one machine, so both timestamps come from the same clock. A record that was
+written again after a replay counts once, at its earliest file.
+\emph{Batch-commit count (overhead proxy):} the number of committed
+micro-batches in the trial (every trial processes the same 36{,}000 records).
+Each batch writes one offsets and one commits entry and pays Spark's per-batch
+scheduling cost, so the count tracks this overhead; we did not measure
+checkpoint bytes, I/O time or CPU, and fewer commits need not mean
+proportionally lower resource use.
 
 \paragraph{Environment.}
 One laptop (Intel Core i5-1335U) running WSL2 Ubuntu with 8\,GB for WSL;
@@ -236,7 +263,7 @@ sink, so it could not represent the file sink, which admits no duplicates by
 design, and it predicted recovery growing about fivefold from A to B. Measured, B
 recovered a few seconds slower than A in this study, but A and B ran on
 different days; when every strategy was interleaved (Section~\ref{sec:study2}),
-recovery did not depend on the interval. The differences are in kind, not degree, and they are
+we observed no systematic relationship between recovery time and interval. The differences are in kind, not degree, and they are
 why this paper reports only measured results.
 
 \begin{table}[t]
@@ -257,7 +284,7 @@ Trigger & dup.\,\% & rec.\,s & file & fBatch & rec.\,s \\
 \end{tabular}
 \end{table}
 
-\section{Adaptive checkpoint selection, live}
+\section{Adaptive trigger control (ACS), live}
 \label{sec:acs}
 
 \paragraph{The rule.}
@@ -299,10 +326,15 @@ counts the crash for the recency signal.
 Over \Switches{} switches in \ACSTrialsClean{} ACS trials, the time from stopping
 the old query to the first batch of the new one had a median of \SwitchMed\,s
 (\SwitchMin--\SwitchMax\,s; \SwitchOverOne{} of \SwitchN{} measured switches took
-more than 1\,s), against about 10\,s for crash recovery. No ACS trial produced a
-duplicate (\ACSDupTrials{} trials with duplicates). Restart-based adaptation is
-therefore cheap and safe; whether it is \emph{useful} is the question of the next
-two sections.
+more than 1\,s), against about 10\,s for crash recovery. The other
+\SwitchKilled{} switches have no timing because the injected driver kill came
+within \SwitchKilledMax\,s after them, before the new query had run a batch;
+those trials then recovered like any other. No ACS trial produced a duplicate
+(\ACSDupTrials{} trials with duplicates), so no duplicates were observed in the
+tested switches. This is an observation for our sink, workload and stop
+procedure, not a proof that restart-based switching is safe in general; it
+relies on stopping only between batches. Switching was cheap here; whether it is
+\emph{useful} is the question of the next two sections.
 
 \section{Study 2: ACS against fixed intervals}
 \label{sec:study2}
@@ -316,8 +348,17 @@ and 5.8\,s (C). The C strategies are the fair comparison: they answer whether
 0.5$\times$, 1$\times$ and 3$\times$ 300 records/s, from a seed equal to the trial
 number. All trials used the foreachBatch sink and a driver kill at 15\,s plus a
 phase spread over 30\,s, the same for every strategy. Trial $t$ therefore gave
-every strategy the same input and the same kill time, so strategies can be
-compared pair by pair.
+every strategy a matched workload seed and a matched kill delay, so strategies
+can be compared pair by pair. The match is in the schedule, not in the exact
+failure point. The producer and the Spark job start together; the kill delay
+is counted from the first committed output, which came \FirstOutMed\,s
+(\FirstOutMin--\FirstOutMax\,s) after the producer started, mostly Spark
+start-up, since the first batch runs as soon as the query starts whatever the
+trigger. Within a trial number, the kill therefore fell at slightly different
+times relative to the start of production (spread across strategies: median
+\KillSpreadMed\,s, at most \KillSpreadMax\,s, second run), and at different
+points of each strategy's own batch cycle. The pairs share input and failure
+phase, not an identical system state at the kill.
 
 \paragraph{Two runs.}
 The first run (\ACSTrialsOne{} trials) ran A, B and both ACS variants
@@ -336,7 +377,7 @@ numbers, giving \ACSCleanTwo{} clean trials, 10 per strategy. Code commits:
 \centering\small
 \caption{Study 2, second (interleaved) run: per-trial medians, then median
 (min--max) over 10 trials. Latency: producer send to output. Batch commits:
-committed micro-batches per trial (36{,}000 records each). Mean interval:
+committed micro-batches per trial (36{,}000 records each), an overhead proxy. Mean interval:
 time-weighted, ACS only.}
 \label{tab:run2}
 \resizebox{\textwidth}{!}{%
@@ -353,7 +394,7 @@ Strategy & Trials & Latency p50 s & Latency p95 s & Batch commits & Mean interva
 \centering
 \begin{tikzpicture}
 \begin{axis}[width=\columnwidth, height=5.6cm, xmode=log, ymode=log,
-  xlabel={Batch commits per trial (median)}, ylabel={Latency p50, s (median)},
+  xlabel={Batch-commit count per trial (median)}, ylabel={Latency p50, s (median)},
   xmin=4, xmax=160, ymin=0.5, ymax=25, grid=major, grid style={gray!25},
   xtick={5,10,20,50,100}, xticklabels={5,10,20,50,100},
   ytick={0.5,1,2,5,10,20}, yticklabels={0.5,1,2,5,10,20},
@@ -369,7 +410,7 @@ Strategy & Trials & Latency p50 s & Latency p95 s & Batch commits & Mean interva
 \input{tables/frontier_labels_run2.tex}
 \end{axis}
 \end{tikzpicture}
-\caption{Latency against checkpoint overhead, second run. The line joins the
+\caption{Latency against batch-commit count (overhead proxy), second run. The line joins the
 fixed intervals (B, C\,5.8\,s, C\,3.3\,s, A from left to right). ACS v2 lies on
 the line; ACS v1 lies above it.}
 \label{fig:frontier}
@@ -405,10 +446,45 @@ higher latency than in the second run, which made ACS v1 look better against it
 (\PairPfiftyAcsOneOne{} pairs with lower median latency); even so, every ACS
 variant used more commits than the fixed interval at its own mean in both runs.
 
+\paragraph{Paired differences.}
+Counting wins does not show how large a difference is, or whether a small one
+could be hidden. Table~\ref{tab:diff} gives, for each comparison, the mean of
+the ten per-pair differences (ACS minus C) with a $t$-based 95\% confidence
+interval. In the second run, both variants had a higher p95 latency than the
+fixed interval at their mean (v2: \DiffPninetyfiveAcsTwoTwo\,s; v1:
+\DiffPninetyfiveAcsOneTwo\,s) and more commits (v2: \DiffCommitsAcsTwoTwo;
+v1: \DiffCommitsAcsOneTwo), with intervals that exclude zero. For median
+latency the intervals include zero (v2: \DiffPfiftyAcsTwoTwo\,s; v1:
+\DiffPfiftyAcsOneTwo\,s). That does not make the strategies equivalent: with
+ten pairs, a median-latency gain or loss of up to about half a second (v2) or
+nearly a second (v1) cannot be ruled out. The first run's intervals favour ACS
+on median latency, but its C trials ran under different conditions (above).
+The intervals assume roughly normal per-pair differences, and we did not
+correct for the twelve comparisons; we read them as a description of effect
+sizes, not as significance tests.
+
+\begin{table*}[t]
+\centering\small
+\caption{Paired differences, ACS minus the fixed interval at its mean: mean over
+the 10 pairs, with $t$-based 95\% confidence interval in brackets. Negative
+favours ACS. Each entry is an interval for the \emph{mean paired difference} of
+per-trial values; it is not an interval for the medians over trials reported in
+Table~\ref{tab:run2}, which are a different statistic. Latency in seconds; commits per trial. Run 1's C trials ran
+separately from the others (see text).}
+\label{tab:diff}
+\begin{tabular}{@{}cllll@{}}
+\toprule
+Run & Comparison & $\Delta$ latency p50 & $\Delta$ latency p95 & $\Delta$ batch commits \\
+\midrule
+\DiffRows
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \begin{table}[t]
 \centering\small
-\caption{Paired comparison: in how many of the 10 pairs (same input, same kill
-time) ACS had the lower value.}
+\caption{Paired comparison: in how many of the 10 pairs (matched workload seed
+and kill delay) ACS had the lower value.}
 \label{tab:paired}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}llccc@{}}
@@ -437,10 +513,10 @@ Strategy & p50 & p95 & comm. & p50 & p95 & comm. \\
 \end{tabular}
 \end{table}
 
-\section{Why adaptation has nothing to gain}
+\section{Why adaptation showed no benefit here}
 \label{sec:mechanism}
 
-\paragraph{Replay is rare.}
+\paragraph{Replay was rare.}
 In the classic model, a failure loses the work done since the last checkpoint,
 so a longer interval means more redone work. In micro-batch Spark, records that
 arrived since the last batch were never processed; after a restart they are
@@ -450,11 +526,41 @@ run again. Across both runs, that happened in \ReplayEvents{} of
 
 \paragraph{When it happens, it scales with the batch.}
 The replayed amount is the size of the interrupted batch, so it grows with the
-interval and the current rate: the largest, 15{,}750 records, came from a single 30\,s batch. Roughly, the chance of killing a batch in flight is its run
-time divided by the interval, while its size grows with the interval, so the
-expected replay depends much less on the interval than the classic model
-suggests. Our ten trials per strategy are too few to estimate that expectation
-precisely; we report the events individually.
+interval and the current rate. Replay is therefore rare here, not small: the
+largest, 15{,}750 records, came from a single 30\,s batch. Our ten trials per
+strategy are too few to estimate expected replay precisely, so we report the
+events individually and give a simple model of why it need not grow in
+proportion to the interval.
+
+\paragraph{An illustrative model.}
+Let $T$ be the trigger interval, $D$ the run time of a batch, $\lambda$ the input
+rate and $R$ the number of records replayed after a crash. Consider only the
+non-overloaded regime $D < T$, in which each batch finishes before the next
+trigger and no backlog builds up, and assume a roughly stable input rate,
+batches that start every $T$ seconds, and a crash time uniformly distributed
+over the batch cycle. Then
+\begin{align*}
+P &= P(\text{crash during a batch}) \approx D/T,\\
+E[R] &\approx P \cdot E[B \mid \text{interrupted}],
+\end{align*}
+where $B$ is the interrupted batch's record count. A batch holds what arrived
+during the previous cycle, $B \approx \lambda T$, so $E[R] \approx \lambda D$: to
+first order the expected replay is set by how long a batch runs, not by the
+interval, whereas the classic model gives expected lost work of about
+$\lambda T/2$. The interval enters only through $D$. Writing
+$D \approx d_0 + c B$, with a fixed per-batch cost $d_0$ and a per-record cost
+$c$, gives $E[R] \approx \lambda(d_0 + c\lambda T)$, which grows with $T$ only in
+proportion to $c\lambda^2$. For our light transformation and low rate that
+slope is small; for heavy or stateful batches, or higher rates, it need not be,
+and replay could grow with the interval. The approximation $B \approx \lambda T$
+also weakens under bursts: interrupted batches are then larger than average,
+because large batches run longer and are more likely to be hit. The overloaded
+regime $D \ge T$ is different and we do not model it: Spark starts the next
+batch as soon as the previous one ends, a crash almost always hits a running
+batch, and the batch size depends on how the backlog evolves rather than on
+$T$. The model is an
+explanation of the mechanism, not a validated prediction; we did not fit it to
+the data.
 
 \paragraph{Replay did not lengthen recovery, and rarely duplicated.}
 Recovery in the replay trials was 9.0--14.0\,s, within the range of all other
@@ -478,7 +584,7 @@ Run & Strategy & Trial & Replayed & Recovery s & Dup. \\
 \end{tabular}
 \end{table}
 
-\paragraph{Recovery does not depend on the interval.}
+\paragraph{No systematic relationship between recovery and interval.}
 Median recovery was 10.0--10.5\,s for every strategy in the second run
 (Table~\ref{tab:run2}). Splitting each recovery at the moment the restarted
 query was running (Table~\ref{tab:split}), start-up took about 7\,s and the
@@ -486,8 +592,8 @@ first batch after it about 3.5\,s, for every strategy. Over both runs,
 \RecFast{} of \RecAll{} recoveries took under 12\,s and \RecSlow{} took
 12--17\,s; the slower ones had both slower start-up (median \SlowStartup\,s
 against \FastStartup\,s) and a slower first batch (\SlowFirst{} against
-\FastFirst\,s), which points to the machine's state at the time, not to the
-strategy. One recovery took 25.6\,s, with an 18\,s start-up.
+\FastFirst\,s), which points to the machine's state at the time rather than to
+the strategy. One recovery took 25.6\,s, with an 18\,s start-up.
 
 \begin{table}[t]
 \centering\small
@@ -504,14 +610,16 @@ Strategy & $n$ & Start-up & First batch \\
 \end{tabular}
 \end{table}
 
-\paragraph{What is left is latency against overhead.}
-With replay rare and recovery independent of the interval, the interval governs
-how long records wait for a batch (latency) and how many batches commit
-(overhead). That trade-off depends on the workload's rate and the latency
-target, both of which an operator knows in advance. A fixed interval chosen for
-the target serves it directly. ACS adds switching (cheap, but not free), and its
-decisions follow failure recency and throughput variance, which are signals for
-the risk of losing work, the very cost shown above to be small here.
+\paragraph{What is left is latency against batch commits.}
+With replay rare and no systematic relationship between recovery and interval
+in these runs, the
+interval governed how long records wait for a batch (latency) and how many
+batches commit (the overhead proxy). That trade-off depends on the workload's
+rate and the latency target, both of which an operator knows in advance. A
+fixed interval chosen for the target serves it directly. ACS adds switching
+(cheap, but not free), and its decisions follow failure recency and throughput
+variance, which are signals for the risk of losing work, the cost that was
+small under the tested workload.
 
 \section{Detecting paused trials}
 \label{sec:stalls}
@@ -552,12 +660,21 @@ executor-only failures, network partitions and multi-node scheduling are not
 covered. On a cluster, batches take longer to schedule and the in-flight window
 is larger, which could make replay more frequent; the mechanism in
 Section~\ref{sec:mechanism} still applies, but its magnitude may differ.
-\item \textbf{One workload, low rate.} 300 records/s with 0.5--3$\times$ bursts
-and a trivial transformation. Heavier batches spend more time in flight, which
-raises the chance that a kill interrupts one.
+\item \textbf{One workload, low rate, stateless.} 300 records/s with
+0.5--3$\times$ bursts and a trivial stateless transformation. Heavier or
+stateful batches spend more time in flight, which raises both the chance that a
+kill interrupts one and, by the model in Section~\ref{sec:mechanism}, how fast
+replay grows with the interval. Our conclusions are limited to this workload.
+\item \textbf{Overhead proxy.} We count committed batches; we did not measure
+checkpoint metadata bytes, I/O time or CPU.
 \item \textbf{Ten trials per strategy and run.} Enough to show the ordering
-and its consistency across pairs and runs, not to estimate small differences
-or rare-event rates. Replay events are reported individually for that reason.
+and its consistency across pairs and runs, not to establish equivalence or to
+estimate rare-event rates; confidence intervals that include zero
+(Table~\ref{tab:diff}) leave room for small differences. Replay events are
+reported individually for that reason.
+\item \textbf{Latency measurement.} File modification time approximates when
+output became visible; it is precise to the file system's timestamp resolution
+and needs no clock synchronization only because everything ran on one machine.
 \item \textbf{Machine state.} Recovery showed two modes tied to the machine's
 state, and the first run's C strategies ran under different conditions. The
 second run interleaves every strategy trial by trial; its six reruns ran
@@ -593,17 +710,22 @@ logs, was applied to LLM serving in \cite{medipally2026llm}.
 
 \section{Conclusion}
 
-In Spark Structured Streaming on one machine, a driver crash rarely forced a
-batch to be redone (\ReplayEvents{} of \CleanTrials{} trials), because records
-that arrive between batches are read after the restart, not replayed. Recovery
-took about 10\,s regardless of the trigger interval, mostly in restart. The
-interval therefore traded latency against checkpoint overhead. Changing it at
-runtime was cheap and safe, but on paired workloads and failures, a fixed
+In Spark Structured Streaming on one machine, with a light, low-rate
+workload, a driver crash rarely forced a batch to be redone (\ReplayEvents{} of
+\CleanTrials{} trials), because records that arrive between batches are read
+after the restart, not replayed; when a batch was redone, it could be large
+(up to 15{,}750 records). Recovery took about 10\,s, mostly in restart, and we
+observed no systematic relationship between recovery time and trigger interval. The interval therefore traded latency against
+batch-commit count. Changing it at runtime was cheap, and no duplicates were
+observed in the tested switches, but on pairs with matched workloads and kill
+delays a fixed
 interval at ACS's own mean matched or beat it, and the original ACS rule could
-not react to any single signal. For micro-batch Spark, our evidence supports
-choosing a fixed trigger for the latency target over adapting it to failure
-risk. Next steps: a multi-node cluster with executor failures and heavier
-batches, where in-flight batches are larger; other corruption modes; and
+not react to any single signal. Failure-risk-driven adaptation of the trigger
+showed no measurable benefit under the tested workload; for such workloads our
+evidence supports choosing a fixed trigger for the latency target. Whether this
+holds for heavily loaded or stateful jobs is open. Next steps: a multi-node
+cluster with executor failures and heavier batches, where in-flight batches are
+larger; direct measurement of checkpoint I/O; other corruption modes; and
 controllers that target latency directly.
 
 \paragraph{Artifact.}
@@ -611,6 +733,7 @@ Code, every trial record and log, and the script that generates every table,
 figure and in-text number of this paper are at
 \url{https://github.com/rmedipallycic/spark-streaming-fault-tolerance}
 (MIT licence). Excluded trials are kept with their reasons.
+Appendix~\ref{app:repro} lists how to reproduce the tables and the runs.
 
 \section*{Acknowledgments}
 The harness code, analysis scripts, and much of the text of this paper were
@@ -619,7 +742,64 @@ author directed the work, ran all experiments, and is responsible for every
 reported result; each number is generated by \texttt{paper/make\_tables.py}
 from the trial records committed to the repository.
 
-\clearpage
+\appendix
+\section{Reproducibility checklist}
+\label{app:repro}
+
+\paragraph{Regenerating the paper's numbers.}
+From the repository root, \texttt{python paper/make\_tables.py} (Python 3, no
+packages beyond the standard library) reads the committed trial records and
+rewrites every file in \texttt{paper/tables/}; \texttt{pdflatex main},
+\texttt{bibtex main} and two more \texttt{pdflatex main} runs in
+\texttt{paper/} rebuild the PDF. The expected output is byte-identical tables;
+\texttt{git status} after running the script should show no changes in
+\texttt{paper/tables/}. Per-trial CSV and Markdown summaries are produced by
+\texttt{python live/analyze.py} (Study~1) and
+\texttt{python live/analyze\_acs.py --root experiments/live\_acs2} (and
+\texttt{live\_acs}).
+
+\paragraph{Software.}
+WSL2 Ubuntu; OpenJDK 17; Python 3.11; PySpark 3.5.3; confluent-kafka 2.3.0;
+Docker Compose with the Confluent 7.5.0 ZooKeeper and Kafka images
+(\texttt{docker-compose.yml}). \texttt{bash live/setup\_wsl.sh} installs these.
+Every \texttt{trial.json} records the exact versions, command line, git commit
+and whether the tree was dirty.
+
+\paragraph{Running the trials.}
+With Kafka up (\texttt{docker compose up -d zookeeper kafka}):
+Study~1, \texttt{TRIALS=10 bash live/run\_grid.sh};
+Study~2, first run, \texttt{bash live/run\_acs\_grid.sh} and then
+\texttt{STRATEGIES="C3.3 C5.8" bash live/run\_acs\_grid.sh};
+second run,
+\texttt{STRATEGIES="A B C3.3 C5.8 ACSv1 ACSv2" EXPERIMENT=live\_acs2 bash
+live/run\_acs\_grid.sh}. The scripts refuse to start if \texttt{live/} or
+\texttt{src/} has uncommitted changes.
+
+\paragraph{Seeds and kill times.}
+In Study~2, trial $t$ uses workload seed $t$ (15\,s segments at 0.5, 1 or
+3$\times$ 300 records/s) and a kill $15 + 30\,\{0.618t\}$ seconds after the first
+committed output, where $\{\cdot\}$ is the fractional part; every strategy
+therefore gets the same input schedule and kill delay; the delay is counted
+from the first committed output, so the wall-clock kill time differs slightly
+between strategies (Section~\ref{sec:study2}). Study~1 uses the same
+golden-ratio phase, scaled by the trigger interval.
+
+\paragraph{Exclusion rules.}
+A trial is \emph{stalled}, and left out of the tables but kept in the data, if
+its producer finished more than 10\,s behind its rate schedule
+(\texttt{producer\_overrun} in \texttt{live/analyze\_acs.py});
+Table~\ref{tab:stalls} lists the six. Stalled trials were rerun with the same
+trial number. Only trials with \texttt{run\_type} \texttt{measured} are used;
+smoke tests and the invalidated first attempt at B in Study~1 (full
+\texttt{/tmp}) are kept separately and documented in the repository.
+
+\paragraph{Expected outputs.}
+\AllTrials{} measured trials; \CleanTrials{} clean comparison trials, 10 per
+strategy and run; \ReplayEvents{} replay events; \Switches{} switches, of which
+\SwitchN{} timed; no duplicates in any ACS trial. Absolute latencies and
+recovery times depend on the machine; the ordering of strategies in
+Table~\ref{tab:run2} is the result to compare.
+
 \bibliographystyle{plain}
 \bibliography{refs}
 \end{document}

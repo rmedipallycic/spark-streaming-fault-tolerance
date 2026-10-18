@@ -114,7 +114,7 @@ def main():
     lines = ["Median (min-max) over trials. Replay: records in batches planned but not committed "
              "when the job was killed. Latency: producer send to output file write. Batch commits: "
              "total micro-batches committed in the trial (same 36,000 records in every trial), the "
-             "checkpoint overhead measure; commits per minute is kept in summary.csv only, because "
+             "overhead proxy (checkpoint I/O is not measured); commits per minute is kept in summary.csv only, because "
              "the end-of-trial wait differs by strategy.", "",
              "| Workload | Failure | Sink | Strategy | Trials | Outcomes | Trials with duplicates | "
              "Replay records | Recovery s | Latency p50 s | Latency p95 s | Mean interval s | "

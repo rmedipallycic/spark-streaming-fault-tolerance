@@ -237,6 +237,42 @@ def main():
             macros[f"PairCommits{tag}"] = f"{wc}/{len(ts)}"
     write("paired.tex", "".join(rows))
 
+    # paired differences (ACS minus C) with t-based 95% confidence intervals
+    T975 = {4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179}
+    rows = []
+    for k in ("1", "2"):
+        d = {(label(r["config"]), r["config"]["trial"]): r for r in clean[k]}
+        for a, b in (("ACS v2", "C (3.3 s)"), ("ACS v1", "C (5.8 s)")):
+            ts = [t for t in range(10) if (a, t) in d and (b, t) in d]
+            cells = []
+            for name, f, fmt in (("Pfifty", lambda r: m_lat(r, "p50_s"), "{:+.2f}"),
+                                 ("Pninetyfive", lambda r: m_lat(r, "p95_s"), "{:+.2f}"),
+                                 ("Commits", lambda r: r.get("n_batch_commits"), "{:+.1f}")):
+                diffs = [f(d[(a, t)]) - f(d[(b, t)]) for t in ts]
+                mu = statistics.mean(diffs)
+                half = T975[len(diffs) - 1] * statistics.stdev(diffs) / len(diffs) ** 0.5
+                cell = f"{fmt.format(mu)} [{fmt.format(mu - half)}, {fmt.format(mu + half)}]"
+                cell = cell.replace("-", "$-$")
+                cells.append(cell)
+                tag = MACRO_NAME[a] + ("One" if k == "1" else "Two")
+                macros[f"Diff{name}{tag}"] = cell.replace("[", "{[}").replace("]", "{]}")
+            rows.append(f"{k} & {SHORT[a]} $-$ {SHORT[b]} & " + " & ".join(cells) + " \\\\\n")
+    write("paired_diff.tex", "".join(rows))
+
+    # how well kills line up across strategies within a trial number (second run)
+    by_t = defaultdict(list)
+    first_out = []
+    for r in clean["2"]:
+        e = r["events"]
+        by_t[r["config"]["trial"]].append(e["kill"] - e["producer_start"])
+        first_out.append(e["first_output"] - e["producer_start"])
+    spreads = [max(v) - min(v) for v in by_t.values()]
+    macros["FirstOutMed"] = f"{statistics.median(first_out):.0f}"
+    macros["FirstOutMin"] = f"{min(first_out):.1f}"
+    macros["FirstOutMax"] = f"{max(first_out):.1f}"
+    macros["KillSpreadMed"] = f"{statistics.median(spreads):.1f}"
+    macros["KillSpreadMax"] = f"{max(spreads):.1f}"
+
     # latency of the fixed-interval curve at ACS's commit count (linear between neighbours)
     for k in ("1", "2"):
         pts = sorted((med([r.get("n_batch_commits") for r in by[k][st]]), med([m_lat(r, "p50_s") for r in by[k][st]]))
@@ -305,6 +341,21 @@ def main():
         except OSError:
             pass
     nsw = sum((r.get("control") or {}).get("switches") or 0 for r in acs)
+    killed_after_switch = []
+    for r in acs:
+        try:
+            with open(os.path.join(r["_dir"], "control.jsonl"), encoding="utf-8") as f:
+                ev = [json.loads(line) for line in f if line.strip()]
+        except OSError:
+            continue
+        for i, e in enumerate(ev):
+            if e["type"] != "switch":
+                continue
+            nxt = next((x for x in ev[i + 1:] if x["type"] in ("first_batch_after_switch", "query_start")), None)
+            if nxt is not None and nxt["type"] == "query_start":
+                killed_after_switch.append(r["events"]["kill"] - e["t"])
+    macros["SwitchKilled"] = len(killed_after_switch)
+    macros["SwitchKilledMax"] = f"{max(killed_after_switch):.1f}" if killed_after_switch else "--"
 
     allacs = [r for k in runs for r in runs[k]]
     commits = sorted({r["environment"]["git_commit"][:7] for r in allacs})
