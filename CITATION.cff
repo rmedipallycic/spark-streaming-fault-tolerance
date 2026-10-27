@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the paper."
+title: "Spark Structured Streaming Under Failure: A Fault-Injection Study of Adaptive Micro-Batch Triggering"
+authors:
+  - family-names: Medipally
+    given-names: Rajshekar
+repository-code: "https://github.com/rmedipallycic/spark-streaming-fault-tolerance"
+license: MIT
+preferred-citation:
+  type: article
+  title: "Does Adaptive Micro-Batch Triggering Help Spark Structured Streaming? A Fault-Injection Study of Replay, Recovery and Latency"
+  authors:
+    - family-names: Medipally
+      given-names: Rajshekar
+  year: 2026
+  publisher:
+    name: Zenodo
+  doi: "10.5281/zenodo.23457070"
+  url: "https://doi.org/10.5281/zenodo.23457070"

@@ -1,6 +1,6 @@
 # Experimental Setup and Reproducibility Guide
 
-**Status:** Planned protocol for live experiments. No live experiments have been run yet; current results in this repository come from simulation (see the README). This document describes the intended setup and will be updated as the live harness is built and tested.
+**Status: superseded.** This is the protocol written *before* the live experiments, kept as project history. The live runs differ from it (Spark 3.5.3 rather than 3.5.0, Java 17 rather than 11, Python 3.11, 300 records/s and 36,000 records per trial, recovery measured from the kill rather than from a throughput threshold, and Strategy C redefined as a fixed interval at ACS's mean). For the setup actually used, see [Live Experiments: Measured Results](../README.md#live-experiments-measured-results-local) in the README, [`live/README.md`](../live/README.md), and the reproducibility appendix of the [paper](../paper/main.pdf).
 
 ## Hardware Configuration (planned)
 

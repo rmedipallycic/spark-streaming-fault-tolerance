@@ -258,6 +258,18 @@ python src/adaptive_checkpoint.py
 
 ```
 spark-streaming-fault-tolerance/
+├── paper/                           # MEASURED: the paper; make_tables.py generates every table from the trial records
+├── live/                            # MEASURED: live harness (run_trial.py, acs.py, stream_job.py) and analysis scripts
+├── experiments/
+│   ├── live/                        # MEASURED: 84 delivery trials (driver kill, offset corruption)
+│   ├── live_acs/, live_acs2/        # MEASURED: 126 trials, ACS versus fixed triggers
+│   ├── live_excluded/               # MEASURED runs excluded from the analysis, with the reason (see its README)
+│   ├── run_simulation.py            # SIMULATION: Spark/Flink simulation harness
+│   ├── summary.csv                  # SIMULATION: Spark results
+│   ├── raw/                         # SIMULATION: per-trial Spark data
+│   ├── experiments/adaptive/        # SIMULATION: ACS results (480 rows)
+│   ├── flink/                       # SIMULATION: Flink results (360 rows)
+│   └── cluster-results/             # SIMULATION: outputs of the simulator run on AWS EMR (not measured Spark runs)
 ├── src/
 │   ├── pipeline.py                  # Spark Structured Streaming pipeline (runner interface incomplete)
 │   ├── adaptive_checkpoint.py       # ACS algorithm + simulation
@@ -266,16 +278,11 @@ spark-streaming-fault-tolerance/
 │   └── metrics_collector.py         # Metrics collection
 ├── scripts/
 │   └── run_experiment.sh            # Experiment launcher (not yet functional)
-├── experiments/
-│   ├── run_simulation.py            # Spark/Flink simulation harness
-│   ├── summary.csv                  # Simulated Spark results
-│   ├── raw/                         # Simulated per-trial Spark data
-│   ├── experiments/adaptive/        # Simulated ACS results (480 rows)
-│   ├── flink/                       # Simulated Flink results (360 rows)
-│   └── cluster-results/             # Simulation outputs from a run on AWS EMR
-├──docs/                            # Experimental setup and future-work methodology
-├── docker-compose.yml
-└── requirements.txt
+├── docs/                            # standby-event note, the original (superseded) setup plan, future-work methodology
+├── docker-compose.yml               # Kafka for the live runs
+├── requirements.txt                 # Python packages for the live runs
+└── CITATION.cff                     # citation metadata (GitHub "Cite this repository")
+.github/workflows/                   # CI: regenerates the paper's tables and fails on any difference
 ```
 
 ---
